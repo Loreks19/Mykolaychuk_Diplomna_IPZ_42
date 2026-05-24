@@ -5,9 +5,10 @@ import type { ReactNode } from 'react'
 type AppLayoutProps = {
   children: ReactNode
   onHomeClick: () => void
+  onRegisterClick: () => void
 }
 
-function AppLayout({ children, onHomeClick }: AppLayoutProps) {
+function AppLayout({ children, onHomeClick, onRegisterClick }: AppLayoutProps) {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static" color="inherit" elevation={0}>
@@ -22,7 +23,7 @@ function AppLayout({ children, onHomeClick }: AppLayoutProps) {
               GameHub
             </Button>
 
-            <Box component="nav" sx={{ display: 'flex', gap: 1 }}>
+            <Box component="nav" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button color="inherit" onClick={onHomeClick}>
                 Ігри
               </Button>
@@ -31,6 +32,9 @@ function AppLayout({ children, onHomeClick }: AppLayoutProps) {
               </Button>
               <Button color="inherit">
                 Про проєкт
+              </Button>
+              <Button variant="contained" onClick={onRegisterClick}>
+                Реєстрація
               </Button>
             </Box>
           </Toolbar>
