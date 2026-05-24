@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material'
 import { type ReactNode, useState } from 'react'
-import type { UserRole } from '../App'
+import type { UserRole } from '../types/database'
 
 type AppLayoutProps = {
   children: ReactNode

@@ -1,39 +1,28 @@
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import PersonAddIcon from '@mui/icons-material/PersonAdd'
-import {
-  Alert,
-  Box,
-  Button,
-  Container,
-  Paper,
-  Stack,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from '@mui/material'
+import { Alert, Box, Button, Container, Paper, Stack, TextField, Typography } from '@mui/material'
 import { type FormEvent, useState } from 'react'
-
-type RegisterRole = 'user' | 'admin'
+import { supabase } from '../services/supabaseClient'
 
 type RegisterForm = {
   name: string
   email: string
   password: string
-  adminCode: string
+}
+
+type RegisterPageProps = {
+  onRegisterSuccess: () => void
 }
 
 const defaultForm: RegisterForm = {
   name: '',
   email: '',
   password: '',
-  adminCode: '',
 }
 
-function RegisterPage() {
-  const [role, setRole] = useState<RegisterRole>('user')
+function RegisterPage({ onRegisterSuccess }: RegisterPageProps) {
   const [form, setForm] = useState(defaultForm)
   const [message, setMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (field: keyof RegisterForm, value: string) => {
     setForm((currentForm) => ({
@@ -43,7 +32,7 @@ function RegisterPage() {
     setMessage('')
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!form.name.trim() || !form.email.trim() || form.password.length < 6) {
@@ -51,16 +40,32 @@ function RegisterPage() {
       return
     }
 
-    if (role === 'admin' && !form.adminCode.trim()) {
-      setMessage('Для реєстрації адміністратора потрібно ввести код доступу.')
+    setIsLoading(true)
+
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          full_name: form.name,
+          role: 'user',
+        },
+      },
+    })
+
+    setIsLoading(false)
+
+    if (error) {
+      setMessage(error.message)
       return
     }
 
-    setMessage(
-      role === 'admin'
-        ? 'Форма адміністратора заповнена. Пізніше ці дані будуть відправлятися в Supabase.'
-        : 'Форма користувача заповнена. Пізніше тут буде реальна реєстрація через Supabase.',
-    )
+    if (!data.session) {
+      setMessage('Акаунт створено. Перевір email для підтвердження реєстрації.')
+      return
+    }
+
+    onRegisterSuccess()
   }
 
   return (
@@ -71,33 +76,12 @@ function RegisterPage() {
             Account Access
           </Typography>
           <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
-            Реєстрація
+            Реєстрація користувача
           </Typography>
           <Typography color="text.secondary">
-            Створи обліковий запис для користувача або адміністратора платформи.
+            Адміністратор входить окремо через готовий демо-логін. Тут створюється тільки звичайний користувач.
           </Typography>
         </Box>
-
-        <ToggleButtonGroup
-          exclusive
-          value={role}
-          onChange={(_, selectedRole: RegisterRole | null) => {
-            if (selectedRole) {
-              setRole(selectedRole)
-              setMessage('')
-            }
-          }}
-          sx={{ mb: 3 }}
-        >
-          <ToggleButton value="user">
-            <PersonAddIcon sx={{ mr: 1 }} />
-            Користувач
-          </ToggleButton>
-          <ToggleButton value="admin">
-            <AdminPanelSettingsIcon sx={{ mr: 1 }} />
-            Адміністратор
-          </ToggleButton>
-        </ToggleButtonGroup>
 
         <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={2.5}>
@@ -128,25 +112,10 @@ function RegisterPage() {
               helperText="Мінімум 6 символів"
             />
 
-            {role === 'admin' && (
-              <TextField
-                label="Код адміністратора"
-                value={form.adminCode}
-                onChange={(event) => handleChange('adminCode', event.target.value)}
-                fullWidth
-                required
-                helperText="Поки це frontend-поле. Пізніше код буде перевірятися на сервері."
-              />
-            )}
+            {message && <Alert severity={message.includes('створено') ? 'success' : 'warning'}>{message}</Alert>}
 
-            {message && (
-              <Alert severity={message.includes('Заповни') || message.includes('потрібно') ? 'warning' : 'success'}>
-                {message}
-              </Alert>
-            )}
-
-            <Button type="submit" variant="contained" size="large">
-              {role === 'admin' ? 'Зареєструвати адміністратора' : 'Зареєструвати користувача'}
+            <Button type="submit" variant="contained" size="large" startIcon={<PersonAddIcon />} disabled={isLoading}>
+              {isLoading ? 'Створення акаунта...' : 'Зареєструвати користувача'}
             </Button>
           </Stack>
         </Box>

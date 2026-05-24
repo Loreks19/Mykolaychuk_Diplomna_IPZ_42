@@ -1,27 +1,72 @@
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import LoginIcon from '@mui/icons-material/Login'
-import { Alert, Box, Button, Container, Paper, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import PersonIcon from '@mui/icons-material/Person'
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Paper,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material'
 import { type FormEvent, useState } from 'react'
-import type { UserRole } from '../App'
+import { supabase } from '../services/supabaseClient'
+
+type LoginMode = 'user' | 'admin'
 
 type LoginPageProps = {
-  onLogin: (role: UserRole) => void
+  onLogin: () => void
+  onAdminLogin: () => void
 }
 
-function LoginPage({ onLogin }: LoginPageProps) {
-  const [role, setRole] = useState<UserRole>('user')
+const adminEmail = 'admin@gamletland.local'
+const adminPassword = 'admin2026'
+
+function LoginPage({ onLogin, onAdminLogin }: LoginPageProps) {
+  const [mode, setMode] = useState<LoginMode>('user')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+  const submitLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setMessage('')
 
     if (!email.trim() || password.length < 6) {
-      setError('Введи email та пароль мінімум з 6 символів.')
+      setMessage('Введи email та пароль мінімум з 6 символів.')
       return
     }
 
-    onLogin(role)
+    if (mode === 'admin') {
+      if (email === adminEmail && password === adminPassword) {
+        onAdminLogin()
+        return
+      }
+
+      setMessage('Неправильний логін або пароль адміністратора.')
+      return
+    }
+
+    setIsLoading(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    setIsLoading(false)
+
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+
+    onLogin()
   }
 
   return (
@@ -35,23 +80,36 @@ function LoginPage({ onLogin }: LoginPageProps) {
             Увійти
           </Typography>
           <Typography color="text.secondary">
-            Це frontend-імітація входу. Пізніше тут буде Supabase Auth.
+            Користувач входить через Supabase Auth, а адміністратор поки має окремий демо-вхід.
           </Typography>
         </Box>
 
         <ToggleButtonGroup
           exclusive
-          value={role}
-          onChange={(_, selectedRole: UserRole | null) => {
-            if (selectedRole && selectedRole !== 'guest') {
-              setRole(selectedRole)
+          value={mode}
+          onChange={(_, selectedMode: LoginMode | null) => {
+            if (selectedMode) {
+              setMode(selectedMode)
+              setMessage('')
             }
           }}
           sx={{ mb: 3 }}
         >
-          <ToggleButton value="user">Користувач</ToggleButton>
-          <ToggleButton value="admin">Адміністратор</ToggleButton>
+          <ToggleButton value="user">
+            <PersonIcon sx={{ mr: 1 }} />
+            Користувач
+          </ToggleButton>
+          <ToggleButton value="admin">
+            <AdminPanelSettingsIcon sx={{ mr: 1 }} />
+            Адмін
+          </ToggleButton>
         </ToggleButtonGroup>
+
+        {mode === 'admin' && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Демо-адмін: admin@gamletland.local / admin2026
+          </Alert>
+        )}
 
         <Box component="form" onSubmit={submitLogin}>
           <Stack spacing={2.5}>
@@ -72,10 +130,10 @@ function LoginPage({ onLogin }: LoginPageProps) {
               required
             />
 
-            {error && <Alert severity="warning">{error}</Alert>}
+            {message && <Alert severity="warning">{message}</Alert>}
 
-            <Button type="submit" variant="contained" size="large" endIcon={<LoginIcon />}>
-              Увійти як {role === 'admin' ? 'адміністратор' : 'користувач'}
+            <Button type="submit" variant="contained" size="large" endIcon={<LoginIcon />} disabled={isLoading}>
+              {isLoading ? 'Вхід...' : mode === 'admin' ? 'Увійти в адмінку' : 'Увійти як користувач'}
             </Button>
           </Stack>
         </Box>
