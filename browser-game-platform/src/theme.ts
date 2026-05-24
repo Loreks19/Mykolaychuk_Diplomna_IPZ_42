@@ -1,34 +1,60 @@
-export const theme = {
-  colors: {
-    background: '#f4f6fb',
-    surface: '#ffffff',
-    primary: '#2563eb',
-    primaryDark: '#1d4ed8',
-    text: '#172033',
-    mutedText: '#64748b',
-    border: '#dbe3ef',
-    success: '#16a34a',
-    warning: '#f59e0b',
-    danger: '#dc2626',
-  },
+import { createTheme } from '@mui/material/styles'
 
-  spacing: {
-    xs: '4px',
-    sm: '8px',
-    md: '16px',
-    lg: '24px',
-    xl: '32px',
+export const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#2563eb',
+      dark: '#1d4ed8',
+    },
+    secondary: {
+      main: '#0f766e',
+    },
+    background: {
+      default: '#f4f6fb',
+      paper: '#ffffff',
+    },
+    text: {
+      primary: '#172033',
+      secondary: '#64748b',
+    },
   },
-
-  radius: {
-    sm: '4px',
-    md: '8px',
-    lg: '12px',
+  shape: {
+    borderRadius: 8,
   },
-
-  shadows: {
-    card: '0 8px 24px rgba(15, 23, 42, 0.08)',
+  typography: {
+    fontFamily: 'Arial, sans-serif',
+    h1: {
+      fontSize: '2.3rem',
+      fontWeight: 700,
+    },
+    h2: {
+      fontSize: '1.8rem',
+      fontWeight: 700,
+    },
+    h3: {
+      fontSize: '1.3rem',
+      fontWeight: 700,
+    },
   },
-}
-
-export type AppTheme = typeof theme
+  components: {
+    MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 700,
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          border: '1px solid #dbe3ef',
+        },
+      },
+    },
+  },
+})
