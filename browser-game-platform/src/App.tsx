@@ -31,7 +31,10 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppLayout onHomeClick={openHomePage} onRegisterClick={openRegisterPage}>
+      <AppLayout
+        onHomeClick={openHomePage}
+        onRegisterClick={openRegisterPage}
+      >
         {activePage === 'register' && <RegisterPage />}
         {activePage === 'game' && selectedGame && (
           <GamePage game={selectedGame} onBack={openHomePage} />

@@ -1,4 +1,3 @@
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports'
 import { AppBar, Box, Button, Container, Toolbar, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 
@@ -10,20 +9,57 @@ type AppLayoutProps = {
 
 function AppLayout({ children, onHomeClick, onRegisterClick }: AppLayoutProps) {
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="inherit" elevation={0}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        background:
+          'radial-gradient(circle at top left, rgba(15, 105, 222, 0.22), transparent 34%), #0B1020',
+      }}
+    >
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          bgcolor: 'rgba(11, 16, 32, 0.86)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          backdropFilter: 'blur(14px)',
+        }}
+      >
         <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ gap: 2, justifyContent: 'space-between' }}>
+          <Toolbar
+            disableGutters
+            sx={{
+              gap: 2,
+              justifyContent: 'space-between',
+              minHeight: { xs: 72, md: 84 },
+            }}
+          >
             <Button
               color="inherit"
               onClick={onHomeClick}
-              startIcon={<SportsEsportsIcon />}
-              sx={{ fontSize: 18 }}
+              sx={{
+                gap: 1.3,
+                px: 0,
+                fontSize: { xs: 20, md: 23 },
+                '&:hover': { bgcolor: 'transparent', color: 'primary.light' },
+              }}
             >
-              GameHub
+              <Box
+                component="img"
+                src="/Logo.svg"
+                alt="GamletLand logo"
+                sx={{
+                  width: { xs: 42, md: 50 },
+                  height: { xs: 42, md: 50 },
+                  filter: 'drop-shadow(0 0 14px rgba(103, 179, 250, 0.45))',
+                }}
+              />
+              GamletLand
             </Button>
 
-            <Box component="nav" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box component="nav" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <Button color="inherit" onClick={onHomeClick}>
                 Ігри
               </Button>
@@ -46,8 +82,16 @@ function AppLayout({ children, onHomeClick, onRegisterClick }: AppLayoutProps) {
       </Box>
 
       <Box component="footer" sx={{ borderTop: '1px solid', borderColor: 'divider', py: 3 }}>
-        <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-          <Typography color="text.secondary">Browser Game Platform</Typography>
+        <Container
+          maxWidth="lg"
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 2,
+            flexDirection: { xs: 'column', sm: 'row' },
+          }}
+        >
+          <Typography color="text.secondary">GamletLand</Typography>
           <Typography color="text.secondary">Дипломний проєкт з веб-розробки</Typography>
         </Container>
       </Box>

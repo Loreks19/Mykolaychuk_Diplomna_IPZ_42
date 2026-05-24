@@ -2,38 +2,41 @@ import { createTheme } from '@mui/material/styles'
 
 export const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: 'dark',
     primary: {
-      main: '#2563eb',
-      dark: '#1d4ed8',
+      main: '#0F69DE',
+      light: '#67B3FA',
+      dark: '#0A4EA8',
     },
     secondary: {
-      main: '#0f766e',
+      main: '#9FDBF0',
     },
     background: {
-      default: '#f4f6fb',
-      paper: '#ffffff',
+      default: '#0B1020',
+      paper: '#11182B',
     },
     text: {
-      primary: '#172033',
-      secondary: '#64748b',
+      primary: '#F8FBFF',
+      secondary: '#A7B4CA',
     },
+    divider: 'rgba(159, 219, 240, 0.14)',
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 10,
   },
   typography: {
     fontFamily: 'Arial, sans-serif',
     h1: {
-      fontSize: '2.3rem',
-      fontWeight: 700,
+      fontSize: '2.6rem',
+      fontWeight: 800,
+      lineHeight: 1.1,
     },
     h2: {
       fontSize: '1.8rem',
-      fontWeight: 700,
+      fontWeight: 800,
     },
     h3: {
-      fontSize: '1.3rem',
+      fontSize: '1.25rem',
       fontWeight: 700,
     },
   },
@@ -44,15 +47,9 @@ export const theme = createTheme({
       },
       styleOverrides: {
         root: {
+          borderRadius: 8,
           textTransform: 'none',
           fontWeight: 700,
-        },
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          border: '1px solid #dbe3ef',
         },
       },
     },

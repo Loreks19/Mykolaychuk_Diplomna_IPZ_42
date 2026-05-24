@@ -10,44 +10,53 @@ type GamePageProps = {
 
 function GamePage({ game, onBack }: GamePageProps) {
   return (
-    <Container maxWidth="lg" sx={{ py: 5 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 3 }}>
         Назад до каталогу
       </Button>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ mb: 4 }}>
-        <Box sx={{ flex: 1 }}>
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-            <Chip label={game.genre} color="primary" />
-            <Chip label={game.difficulty} variant="outlined" />
-            <Chip label={game.players} variant="outlined" />
-          </Stack>
+      <Paper sx={{ p: { xs: 3, md: 4 }, mb: 3, border: '1px solid', borderColor: 'divider' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: { md: 'center' } }}>
+          <Box sx={{ flex: 1 }}>
+            <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
+              <Chip label={game.genre} color="primary" />
+              <Chip label={game.difficulty} variant="outlined" />
+              <Chip label={game.players} variant="outlined" />
+            </Stack>
 
-          <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
-            {game.title}
-          </Typography>
+            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
+              {game.title}
+            </Typography>
 
-          <Typography color="text.secondary" sx={{ fontSize: 18, lineHeight: 1.7 }}>
-            {game.description}
-          </Typography>
-        </Box>
+            <Typography color="text.secondary" sx={{ fontSize: 18, lineHeight: 1.7 }}>
+              {game.description}
+            </Typography>
+          </Box>
 
-        {game.playUrl && (
-          <Button
-            component="a"
-            href={game.playUrl}
-            target="_blank"
-            rel="noreferrer"
-            variant="outlined"
-            endIcon={<OpenInNewIcon />}
-            sx={{ alignSelf: { xs: 'flex-start', md: 'center' } }}
-          >
-            Відкрити в новій вкладці
-          </Button>
-        )}
-      </Stack>
+          {game.playUrl ? (
+            <Button
+              component="a"
+              href={game.playUrl}
+              target="_blank"
+              rel="noreferrer"
+              variant="outlined"
+              endIcon={<OpenInNewIcon />}
+            >
+              Відкрити в новій вкладці
+            </Button>
+          ) : null}
+        </Stack>
+      </Paper>
 
-      <Paper variant="outlined" sx={{ overflow: 'hidden', bgcolor: '#0f172a' }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          overflow: 'hidden',
+          bgcolor: '#050815',
+          borderColor: 'rgba(103, 179, 250, 0.28)',
+          boxShadow: '0 24px 80px rgba(15, 105, 222, 0.2)',
+        }}
+      >
         {game.playUrl ? (
           <Box
             component="iframe"

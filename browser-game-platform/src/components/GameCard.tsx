@@ -9,9 +9,22 @@ type GameCardProps = {
 
 function GameCard({ game, onOpen }: GameCardProps) {
   return (
-    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+    <Card
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 20px 48px rgba(0, 0, 0, 0.24)',
+        transition: 'transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          borderColor: 'primary.light',
+          boxShadow: '0 22px 60px rgba(15, 105, 222, 0.28)',
+        },
+      }}
+    >
+      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+        <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
           <Chip label={game.genre} color="primary" size="small" />
           <Chip label={game.difficulty} variant="outlined" size="small" />
         </Stack>
@@ -25,7 +38,7 @@ function GameCard({ game, onOpen }: GameCardProps) {
         </Typography>
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+      <CardActions sx={{ justifyContent: 'space-between', px: 3, pb: 3 }}>
         <Typography variant="body2" color="text.secondary">
           {game.players}
         </Typography>
