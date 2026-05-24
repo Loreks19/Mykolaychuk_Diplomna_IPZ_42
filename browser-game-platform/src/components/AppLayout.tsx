@@ -4,6 +4,7 @@ import {
   AppBar,
   Box,
   Button,
+  Chip,
   Container,
   Drawer,
   IconButton,
@@ -14,33 +15,43 @@ import {
   Typography,
 } from '@mui/material'
 import { type ReactNode, useState } from 'react'
+import type { UserRole } from '../App'
 
 type AppLayoutProps = {
   children: ReactNode
+  userRole: UserRole
   onHomeClick: () => void
   onAdminClick: () => void
   onAboutClick: () => void
   onProfileClick: () => void
+  onLoginClick: () => void
   onRegisterClick: () => void
+  onLogoutClick: () => void
 }
 
 function AppLayout({
   children,
+  userRole,
   onHomeClick,
   onAdminClick,
   onAboutClick,
   onProfileClick,
+  onLoginClick,
   onRegisterClick,
+  onLogoutClick,
 }: AppLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const isLoggedIn = userRole !== 'guest'
 
   const menuItems = [
-    { label: 'Ігри', action: onHomeClick },
-    { label: 'Про нас', action: onAboutClick },
-    { label: 'Кабінет', action: onProfileClick },
-    { label: 'Адмін', action: onAdminClick },
-    { label: 'Реєстрація', action: onRegisterClick },
-  ]
+    { label: 'Ігри', action: onHomeClick, show: true },
+    { label: 'Про нас', action: onAboutClick, show: true },
+    { label: 'Кабінет', action: onProfileClick, show: isLoggedIn },
+    { label: 'Адмін', action: onAdminClick, show: userRole === 'admin' },
+    { label: 'Увійти', action: onLoginClick, show: !isLoggedIn },
+    { label: 'Реєстрація', action: onRegisterClick, show: !isLoggedIn },
+    { label: 'Вийти', action: onLogoutClick, show: isLoggedIn },
+  ].filter((item) => item.show)
 
   const handleMenuClick = (action: () => void) => {
     action()
@@ -105,6 +116,7 @@ function AppLayout({
                 gap: 1,
                 flexWrap: 'wrap',
                 justifyContent: 'flex-end',
+                alignItems: 'center',
               }}
             >
               <Button color="inherit" onClick={onHomeClick}>
@@ -113,15 +125,33 @@ function AppLayout({
               <Button color="inherit" onClick={onAboutClick}>
                 Про нас
               </Button>
-              <Button color="inherit" onClick={onProfileClick}>
-                Кабінет
-              </Button>
-              <Button color="inherit" onClick={onAdminClick}>
-                Адмін
-              </Button>
-              <Button variant="contained" onClick={onRegisterClick}>
-                Реєстрація
-              </Button>
+              {isLoggedIn && (
+                <Button color="inherit" onClick={onProfileClick}>
+                  Кабінет
+                </Button>
+              )}
+              {userRole === 'admin' && (
+                <Button color="inherit" onClick={onAdminClick}>
+                  Адмін
+                </Button>
+              )}
+              {isLoggedIn ? (
+                <>
+                  <Chip label={userRole === 'admin' ? 'Адміністратор' : 'Користувач'} size="small" color="primary" />
+                  <Button variant="outlined" onClick={onLogoutClick}>
+                    Вийти
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button color="inherit" onClick={onLoginClick}>
+                    Увійти
+                  </Button>
+                  <Button variant="contained" onClick={onRegisterClick}>
+                    Реєстрація
+                  </Button>
+                </>
+              )}
             </Box>
 
             <IconButton

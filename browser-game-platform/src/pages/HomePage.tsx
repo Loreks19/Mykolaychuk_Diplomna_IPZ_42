@@ -12,18 +12,20 @@ import GameCard from '../components/GameCard'
 import { games, genres, type Game } from '../data/games'
 
 type HomePageProps = {
+  favoriteIds: number[]
   onOpenGame: (game: Game) => void
+  onToggleFavorite: (gameId: number) => void
 }
 
-function HomePage({ onOpenGame }: HomePageProps) {
+function HomePage({ favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) {
   const [searchText, setSearchText] = useState('')
-  const [selectedGenre, setSelectedGenre] = useState('All')
+  const [selectedGenre, setSelectedGenre] = useState('Усі')
 
   const filteredGames = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
 
     return games.filter((game) => {
-      const fitsGenre = selectedGenre === 'All' || game.genre === selectedGenre
+      const fitsGenre = selectedGenre === 'Усі' || game.genre === selectedGenre
       const fitsSearch = game.title.toLowerCase().includes(normalizedSearch)
 
       return fitsGenre && fitsSearch
@@ -131,7 +133,13 @@ function HomePage({ onOpenGame }: HomePageProps) {
         }}
       >
         {filteredGames.map((game) => (
-          <GameCard key={game.id} game={game} onOpen={onOpenGame} />
+          <GameCard
+            key={game.id}
+            game={game}
+            isFavorite={favoriteIds.includes(game.id)}
+            onOpen={onOpenGame}
+            onToggleFavorite={onToggleFavorite}
+          />
         ))}
       </Box>
 

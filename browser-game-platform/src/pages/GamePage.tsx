@@ -1,4 +1,6 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import SendIcon from '@mui/icons-material/Send'
 import {
@@ -9,6 +11,7 @@ import {
   Container,
   Divider,
   Paper,
+  Rating,
   Stack,
   TextField,
   Typography,
@@ -18,13 +21,16 @@ import type { Game } from '../data/games'
 
 type GamePageProps = {
   game: Game
+  isFavorite: boolean
   onBack: () => void
+  onToggleFavorite: (gameId: number) => void
 }
 
 type GameComment = {
   id: number
   author: string
   text: string
+  date: string
 }
 
 const startComments: GameComment[] = [
@@ -32,17 +38,20 @@ const startComments: GameComment[] = [
     id: 1,
     author: 'Олег',
     text: 'Гра запускається швидко, для браузерної платформи виглядає нормально.',
+    date: '24.05.2026',
   },
   {
     id: 2,
     author: 'Марина',
     text: 'Було б цікаво додати рейтинг і таблицю результатів.',
+    date: '24.05.2026',
   },
 ]
 
-function GamePage({ game, onBack }: GamePageProps) {
+function GamePage({ game, isFavorite, onBack, onToggleFavorite }: GamePageProps) {
   const [comments, setComments] = useState(startComments)
   const [commentText, setCommentText] = useState('')
+  const [userRating, setUserRating] = useState<number | null>(game.rating)
 
   const addComment = () => {
     const trimmedText = commentText.trim()
@@ -55,10 +64,15 @@ function GamePage({ game, onBack }: GamePageProps) {
       id: Date.now(),
       author: 'Гравець',
       text: trimmedText,
+      date: new Date().toLocaleDateString('uk-UA'),
     }
 
     setComments((currentComments) => [newComment, ...currentComments])
     setCommentText('')
+  }
+
+  const deleteComment = (commentId: number) => {
+    setComments((currentComments) => currentComments.filter((comment) => comment.id !== commentId))
   }
 
   return (
@@ -70,7 +84,7 @@ function GamePage({ game, onBack }: GamePageProps) {
       <Paper sx={{ overflow: 'hidden', mb: 3, border: '1px solid', borderColor: 'divider' }}>
         <Box
           sx={{
-            minHeight: 280,
+            minHeight: 300,
             p: { xs: 3, md: 4 },
             display: 'flex',
             alignItems: 'flex-end',
@@ -96,8 +110,23 @@ function GamePage({ game, onBack }: GamePageProps) {
           </Box>
         </Box>
 
-        {game.playUrl ? (
-          <Box sx={{ p: 3 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ p: 3, alignItems: { md: 'center' } }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flex: 1 }}>
+            <Rating value={userRating} precision={0.5} onChange={(_, value) => setUserRating(value)} />
+            <Typography color="text.secondary">
+              {userRating ? userRating.toFixed(1) : 'Без оцінки'}
+            </Typography>
+          </Stack>
+
+          <Button
+            variant={isFavorite ? 'contained' : 'outlined'}
+            startIcon={isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+            onClick={() => onToggleFavorite(game.id)}
+          >
+            {isFavorite ? 'В обраному' : 'Додати в обране'}
+          </Button>
+
+          {game.playUrl && (
             <Button
               component="a"
               href={game.playUrl}
@@ -108,8 +137,8 @@ function GamePage({ game, onBack }: GamePageProps) {
             >
               Відкрити в новій вкладці
             </Button>
-          </Box>
-        ) : null}
+          )}
+        </Stack>
       </Paper>
 
       <Paper
@@ -174,11 +203,17 @@ function GamePage({ game, onBack }: GamePageProps) {
             <Box key={comment.id}>
               <Stack direction="row" spacing={2}>
                 <Avatar sx={{ bgcolor: 'primary.main' }}>{comment.author[0]}</Avatar>
-                <Box>
-                  <Typography sx={{ fontWeight: 700 }}>{comment.author}</Typography>
-                  <Typography color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between' }}>
+                    <Typography sx={{ fontWeight: 700 }}>{comment.author}</Typography>
+                    <Typography variant="body2" color="text.secondary">{comment.date}</Typography>
+                  </Stack>
+                  <Typography color="text.secondary" sx={{ lineHeight: 1.6, mt: 0.5 }}>
                     {comment.text}
                   </Typography>
+                  <Button color="error" size="small" onClick={() => deleteComment(comment.id)} sx={{ mt: 1 }}>
+                    Видалити
+                  </Button>
                 </Box>
               </Stack>
               <Divider sx={{ mt: 2 }} />

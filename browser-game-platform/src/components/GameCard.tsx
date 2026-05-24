@@ -1,13 +1,17 @@
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import { Box, Button, Card, CardActions, CardContent, Chip, Stack, Typography } from '@mui/material'
+import { Box, Button, Card, CardActions, CardContent, Chip, IconButton, Rating, Stack, Typography } from '@mui/material'
 import type { Game } from '../data/games'
 
 type GameCardProps = {
   game: Game
+  isFavorite?: boolean
   onOpen: (game: Game) => void
+  onToggleFavorite?: (gameId: number) => void
 }
 
-function GameCard({ game, onOpen }: GameCardProps) {
+function GameCard({ game, isFavorite = false, onOpen, onToggleFavorite }: GameCardProps) {
   return (
     <Card
       sx={{
@@ -27,11 +31,29 @@ function GameCard({ game, onOpen }: GameCardProps) {
       <Box
         sx={{
           height: 170,
-          backgroundImage: `linear-gradient(180deg, transparent, rgba(11, 16, 32, 0.62)), url(${game.coverImage})`,
+          position: 'relative',
+          backgroundImage: `linear-gradient(180deg, transparent, rgba(11, 16, 32, 0.72)), url(${game.coverImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
-      />
+      >
+        {onToggleFavorite && (
+          <IconButton
+            color={isFavorite ? 'primary' : 'default'}
+            onClick={() => onToggleFavorite(game.id)}
+            sx={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              bgcolor: 'rgba(11, 16, 32, 0.72)',
+              '&:hover': { bgcolor: 'rgba(15, 105, 222, 0.34)' },
+            }}
+            aria-label="Додати в обране"
+          >
+            {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+          </IconButton>
+        )}
+      </Box>
 
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
         <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
@@ -42,6 +64,13 @@ function GameCard({ game, onOpen }: GameCardProps) {
         <Typography component="h3" variant="h3" sx={{ mb: 1 }}>
           {game.title}
         </Typography>
+
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
+          <Rating value={game.rating} precision={0.1} readOnly size="small" />
+          <Typography variant="body2" color="text.secondary">
+            {game.rating.toFixed(1)}
+          </Typography>
+        </Stack>
 
         <Typography color="text.secondary" sx={{ lineHeight: 1.6 }}>
           {game.description}

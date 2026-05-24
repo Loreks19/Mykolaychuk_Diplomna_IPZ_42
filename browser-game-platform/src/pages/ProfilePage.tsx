@@ -2,13 +2,15 @@ import FavoriteIcon from '@mui/icons-material/Favorite'
 import PersonIcon from '@mui/icons-material/Person'
 import { Avatar, Box, Container, Paper, Stack, Typography } from '@mui/material'
 import GameCard from '../components/GameCard'
-import { favoriteGames, type Game } from '../data/games'
+import type { Game } from '../data/games'
 
 type ProfilePageProps = {
+  favoriteGames: Game[]
   onOpenGame: (game: Game) => void
+  onToggleFavorite: (gameId: number) => void
 }
 
-function ProfilePage({ onOpenGame }: ProfilePageProps) {
+function ProfilePage({ favoriteGames, onOpenGame, onToggleFavorite }: ProfilePageProps) {
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
@@ -25,7 +27,7 @@ function ProfilePage({ onOpenGame }: ProfilePageProps) {
               Гравець GamletLand
             </Typography>
             <Typography color="text.secondary">
-              Тут користувач зможе переглядати обрані ігри, свою активність і майбутню статистику.
+              Тут користувач може переглядати обрані ігри, активність і майбутню статистику.
             </Typography>
           </Box>
         </Stack>
@@ -38,12 +40,12 @@ function ProfilePage({ onOpenGame }: ProfilePageProps) {
             <Typography color="text.secondary">обрані ігри</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">0</Typography>
-            <Typography color="text.secondary">коментарів поки що</Typography>
+            <Typography variant="h2">Frontend</Typography>
+            <Typography color="text.secondary">поточний режим даних</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">Frontend</Typography>
-            <Typography color="text.secondary">статус кабінету</Typography>
+            <Typography variant="h2">Supabase</Typography>
+            <Typography color="text.secondary">планується для збереження</Typography>
           </Box>
         </Stack>
       </Paper>
@@ -56,21 +58,38 @@ function ProfilePage({ onOpenGame }: ProfilePageProps) {
           </Typography>
         </Stack>
         <Typography color="text.secondary">
-          Поки список обраних ігор заданий у frontend. Після підключення Supabase він буде зберігатися для кожного користувача.
+          Натисни серце на картці гри, щоб прибрати її з обраного.
         </Typography>
       </Box>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 3,
-        }}
-      >
-        {favoriteGames.map((game) => (
-          <GameCard key={game.id} game={game} onOpen={onOpenGame} />
-        ))}
-      </Box>
+      {favoriteGames.length > 0 ? (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 3,
+          }}
+        >
+          {favoriteGames.map((game) => (
+            <GameCard
+              key={game.id}
+              game={game}
+              isFavorite
+              onOpen={onOpenGame}
+              onToggleFavorite={onToggleFavorite}
+            />
+          ))}
+        </Box>
+      ) : (
+        <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="h3" sx={{ mb: 1 }}>
+            Обраних ігор поки немає
+          </Typography>
+          <Typography color="text.secondary">
+            Додай гру в обране з каталогу, і вона з’явиться тут.
+          </Typography>
+        </Paper>
+      )}
     </Container>
   )
 }
