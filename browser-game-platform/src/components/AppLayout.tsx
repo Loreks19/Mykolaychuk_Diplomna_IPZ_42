@@ -4,10 +4,11 @@ import type { ReactNode } from 'react'
 type AppLayoutProps = {
   children: ReactNode
   onHomeClick: () => void
+  onAdminClick: () => void
   onRegisterClick: () => void
 }
 
-function AppLayout({ children, onHomeClick, onRegisterClick }: AppLayoutProps) {
+function AppLayout({ children, onHomeClick, onAdminClick, onRegisterClick }: AppLayoutProps) {
   return (
     <Box
       sx={{
@@ -68,6 +69,9 @@ function AppLayout({ children, onHomeClick, onRegisterClick }: AppLayoutProps) {
               </Button>
               <Button color="inherit">
                 Про проєкт
+              </Button>
+              <Button color="inherit" onClick={onAdminClick}>
+                Адмін
               </Button>
               <Button variant="contained" onClick={onRegisterClick}>
                 Реєстрація

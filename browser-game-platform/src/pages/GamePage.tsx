@@ -15,9 +15,19 @@ function GamePage({ game, onBack }: GamePageProps) {
         Назад до каталогу
       </Button>
 
-      <Paper sx={{ p: { xs: 3, md: 4 }, mb: 3, border: '1px solid', borderColor: 'divider' }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: { md: 'center' } }}>
-          <Box sx={{ flex: 1 }}>
+      <Paper sx={{ overflow: 'hidden', mb: 3, border: '1px solid', borderColor: 'divider' }}>
+        <Box
+          sx={{
+            minHeight: 280,
+            p: { xs: 3, md: 4 },
+            display: 'flex',
+            alignItems: 'flex-end',
+            backgroundImage: `linear-gradient(90deg, rgba(11, 16, 32, 0.95), rgba(11, 16, 32, 0.35)), url(${game.coverImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <Box>
             <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
               <Chip label={game.genre} color="primary" />
               <Chip label={game.difficulty} variant="outlined" />
@@ -28,12 +38,14 @@ function GamePage({ game, onBack }: GamePageProps) {
               {game.title}
             </Typography>
 
-            <Typography color="text.secondary" sx={{ fontSize: 18, lineHeight: 1.7 }}>
+            <Typography color="text.secondary" sx={{ maxWidth: 720, fontSize: 18, lineHeight: 1.7 }}>
               {game.description}
             </Typography>
           </Box>
+        </Box>
 
-          {game.playUrl ? (
+        {game.playUrl ? (
+          <Box sx={{ p: 3 }}>
             <Button
               component="a"
               href={game.playUrl}
@@ -44,8 +56,8 @@ function GamePage({ game, onBack }: GamePageProps) {
             >
               Відкрити в новій вкладці
             </Button>
-          ) : null}
-        </Stack>
+          </Box>
+        ) : null}
       </Paper>
 
       <Paper

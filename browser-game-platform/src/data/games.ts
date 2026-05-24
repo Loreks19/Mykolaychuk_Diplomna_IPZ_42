@@ -8,6 +8,7 @@ export type Game = {
   description: string
   players: string
   difficulty: string
+  coverImage: string
   playUrl?: string
 }
 
@@ -20,6 +21,7 @@ export const games: Game[] = [
     description: 'Браузерна гра, у якій гравець керує персонажем і бореться з ворогами.',
     players: '1 гравець',
     difficulty: 'Середня',
+    coverImage: '/games_images/shooter.png',
     playUrl: '/games/shooter/index.html',
   },
   {
@@ -30,6 +32,7 @@ export const games: Game[] = [
     description: 'Швидка аркадна гра, де потрібно ухилятися від перешкод у космосі.',
     players: '1 гравець',
     difficulty: 'Легка',
+    coverImage: '/games_images/space.jpg',
   },
   {
     id: 3,
@@ -39,6 +42,7 @@ export const games: Game[] = [
     description: 'Логічна гра з блоками для тренування уважності та планування.',
     players: '1 гравець',
     difficulty: 'Легка',
+    coverImage: '/games_images/drive.png',
   },
   {
     id: 4,
@@ -48,6 +52,7 @@ export const games: Game[] = [
     description: 'Спокійна стратегія, у якій потрібно розвивати власне місто.',
     players: '1 гравець',
     difficulty: 'Середня',
+    coverImage: '/games_images/build.png',
   },
 ]
 
