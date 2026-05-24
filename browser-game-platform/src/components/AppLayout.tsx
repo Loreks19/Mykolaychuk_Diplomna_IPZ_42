@@ -1,14 +1,52 @@
-import { AppBar, Box, Button, Container, Toolbar, Typography } from '@mui/material'
-import type { ReactNode } from 'react'
+import CloseIcon from '@mui/icons-material/Close'
+import MenuIcon from '@mui/icons-material/Menu'
+import {
+  AppBar,
+  Box,
+  Button,
+  Container,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemText,
+  Toolbar,
+  Typography,
+} from '@mui/material'
+import { type ReactNode, useState } from 'react'
 
 type AppLayoutProps = {
   children: ReactNode
   onHomeClick: () => void
   onAdminClick: () => void
+  onAboutClick: () => void
+  onProfileClick: () => void
   onRegisterClick: () => void
 }
 
-function AppLayout({ children, onHomeClick, onAdminClick, onRegisterClick }: AppLayoutProps) {
+function AppLayout({
+  children,
+  onHomeClick,
+  onAdminClick,
+  onAboutClick,
+  onProfileClick,
+  onRegisterClick,
+}: AppLayoutProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const menuItems = [
+    { label: 'Ігри', action: onHomeClick },
+    { label: 'Про нас', action: onAboutClick },
+    { label: 'Кабінет', action: onProfileClick },
+    { label: 'Адмін', action: onAdminClick },
+    { label: 'Реєстрація', action: onRegisterClick },
+  ]
+
+  const handleMenuClick = (action: () => void) => {
+    action()
+    setIsMenuOpen(false)
+  }
+
   return (
     <Box
       sx={{
@@ -60,15 +98,23 @@ function AppLayout({ children, onHomeClick, onAdminClick, onRegisterClick }: App
               GamletLand
             </Button>
 
-            <Box component="nav" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <Box
+              component="nav"
+              sx={{
+                display: { xs: 'none', md: 'flex' },
+                gap: 1,
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end',
+              }}
+            >
               <Button color="inherit" onClick={onHomeClick}>
                 Ігри
               </Button>
-              <Button color="inherit">
-                Жанри
+              <Button color="inherit" onClick={onAboutClick}>
+                Про нас
               </Button>
-              <Button color="inherit">
-                Про проєкт
+              <Button color="inherit" onClick={onProfileClick}>
+                Кабінет
               </Button>
               <Button color="inherit" onClick={onAdminClick}>
                 Адмін
@@ -77,9 +123,51 @@ function AppLayout({ children, onHomeClick, onAdminClick, onRegisterClick }: App
                 Реєстрація
               </Button>
             </Box>
+
+            <IconButton
+              color="inherit"
+              onClick={() => setIsMenuOpen(true)}
+              sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+              aria-label="Відкрити меню"
+            >
+              <MenuIcon />
+            </IconButton>
           </Toolbar>
         </Container>
       </AppBar>
+
+      <Drawer
+        anchor="right"
+        open={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 280,
+              bgcolor: 'background.paper',
+              borderLeft: '1px solid',
+              borderColor: 'divider',
+            },
+          },
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h3">Меню</Typography>
+            <IconButton color="inherit" onClick={() => setIsMenuOpen(false)} aria-label="Закрити меню">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <List>
+            {menuItems.map((item) => (
+              <ListItemButton key={item.label} onClick={() => handleMenuClick(item.action)}>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
 
       <Box component="main">
         {children}

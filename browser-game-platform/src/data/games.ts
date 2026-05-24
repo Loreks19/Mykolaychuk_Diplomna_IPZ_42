@@ -56,4 +56,6 @@ export const games: Game[] = [
   },
 ]
 
+export const favoriteGames = games.filter((game) => game.id === 1 || game.id === 2)
+
 export const genres: Array<GameGenre | 'All'> = ['All', 'Action', 'Arcade', 'Puzzle', 'Strategy']

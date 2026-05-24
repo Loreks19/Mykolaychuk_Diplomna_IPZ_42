@@ -2,13 +2,15 @@ import { CssBaseline, ThemeProvider } from '@mui/material'
 import { useState } from 'react'
 import AppLayout from './components/AppLayout'
 import type { Game } from './data/games'
+import AboutPage from './pages/AboutPage'
 import AdminPage from './pages/AdminPage'
 import GamePage from './pages/GamePage'
 import HomePage from './pages/HomePage'
+import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 import { theme } from './theme'
 
-type AppPage = 'home' | 'register' | 'admin' | 'game'
+type AppPage = 'home' | 'register' | 'admin' | 'about' | 'profile' | 'game'
 
 function App() {
   const [activePage, setActivePage] = useState<AppPage>('home')
@@ -29,6 +31,16 @@ function App() {
     setActivePage('admin')
   }
 
+  const openAboutPage = () => {
+    setSelectedGame(null)
+    setActivePage('about')
+  }
+
+  const openProfilePage = () => {
+    setSelectedGame(null)
+    setActivePage('profile')
+  }
+
   const openGamePage = (game: Game) => {
     setSelectedGame(game)
     setActivePage('game')
@@ -40,10 +52,14 @@ function App() {
       <AppLayout
         onHomeClick={openHomePage}
         onAdminClick={openAdminPage}
+        onAboutClick={openAboutPage}
+        onProfileClick={openProfilePage}
         onRegisterClick={openRegisterPage}
       >
         {activePage === 'register' && <RegisterPage />}
         {activePage === 'admin' && <AdminPage />}
+        {activePage === 'about' && <AboutPage />}
+        {activePage === 'profile' && <ProfilePage onOpenGame={openGamePage} />}
         {activePage === 'game' && selectedGame && (
           <GamePage game={selectedGame} onBack={openHomePage} />
         )}
