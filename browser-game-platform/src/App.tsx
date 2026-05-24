@@ -19,7 +19,9 @@ function App() {
   const [activePage, setActivePage] = useState<AppPage>('home')
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [userRole, setUserRole] = useState<UserRole>('guest')
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([1, 2])
+  const [userId, setUserId] = useState<string | null>(null)
+  const [userName, setUserName] = useState('Гравець')
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([])
 
   const openPage = (page: AppPage) => {
     setSelectedGame(null)
@@ -31,17 +33,18 @@ function App() {
     setActivePage('game')
   }
 
-  const loadUserRole = async (userId: string) => {
+  const loadUserProfile = async (userId: string) => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const { data, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('full_name')
         .eq('id', userId)
-        .single<Pick<Profile, 'role'>>()
+        .single<Pick<Profile, 'full_name'>>()
 
       if (!error && data) {
-        setUserRole(data.role)
-        return data.role
+        setUserRole('user')
+        setUserName(data.full_name)
+        return
       }
 
       await new Promise((resolve) => {
@@ -50,21 +53,36 @@ function App() {
     }
 
     setUserRole('user')
-    return 'user'
+  }
+
+  const loadFavorites = async (currentUserId: string) => {
+    const { data } = await supabase
+      .from('favorites')
+      .select('game_id')
+      .eq('user_id', currentUserId)
+
+    setFavoriteIds((data ?? []).map((favorite) => favorite.game_id))
   }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        void loadUserRole(data.user.id)
+        setUserId(data.user.id)
+        void loadUserProfile(data.user.id)
+        void loadFavorites(data.user.id)
       }
     })
 
     const { data } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) {
-        void loadUserRole(session.user.id)
+        setUserId(session.user.id)
+        void loadUserProfile(session.user.id)
+        void loadFavorites(session.user.id)
       } else {
+        setUserId(null)
         setUserRole('guest')
+        setUserName('Гравець')
+        setFavoriteIds([])
       }
     })
 
@@ -73,12 +91,41 @@ function App() {
     }
   }, [])
 
-  const toggleFavorite = (gameId: number) => {
-    setFavoriteIds((currentIds) =>
-      currentIds.includes(gameId)
-        ? currentIds.filter((id) => id !== gameId)
-        : [...currentIds, gameId],
-    )
+  const toggleFavorite = async (gameId: number) => {
+    if (!userId) {
+      return false
+    }
+
+    if (favoriteIds.includes(gameId)) {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', userId)
+        .eq('game_id', gameId)
+
+      if (error) {
+        console.error('Favorite delete error:', error.message)
+        return false
+      }
+
+      setFavoriteIds((currentIds) => currentIds.filter((id) => id !== gameId))
+      return true
+    }
+
+    const { error } = await supabase
+      .from('favorites')
+      .upsert({
+        user_id: userId,
+        game_id: gameId,
+      }, { onConflict: 'game_id,user_id' })
+
+    if (error) {
+      console.error('Favorite save error:', error.message)
+      return false
+    }
+
+    setFavoriteIds((currentIds) => [...currentIds, gameId])
+    return true
   }
 
   const login = async () => {
@@ -88,19 +135,27 @@ function App() {
       return
     }
 
-    const role = await loadUserRole(data.user.id)
-    openPage(role === 'admin' ? 'admin' : 'profile')
+    await loadUserProfile(data.user.id)
+    setUserId(data.user.id)
+    await loadFavorites(data.user.id)
+    openPage('profile')
   }
 
   const loginAsAdmin = async () => {
     await supabase.auth.signOut()
+    setUserId(null)
     setUserRole('admin')
+    setUserName('Адміністратор')
+    setFavoriteIds([])
     openPage('admin')
   }
 
   const logout = async () => {
     await supabase.auth.signOut()
+    setUserId(null)
     setUserRole('guest')
+    setUserName('Гравець')
+    setFavoriteIds([])
     openPage('home')
   }
 
@@ -125,6 +180,7 @@ function App() {
         {activePage === 'about' && <AboutPage />}
         {activePage === 'profile' && (
           <ProfilePage
+            userName={userName}
             favoriteGames={favoriteGames}
             onOpenGame={openGamePage}
             onToggleFavorite={toggleFavorite}
@@ -133,6 +189,8 @@ function App() {
         {activePage === 'game' && selectedGame && (
           <GamePage
             game={selectedGame}
+            userId={userId}
+            userName={userName}
             isFavorite={favoriteIds.includes(selectedGame.id)}
             onBack={() => openPage('home')}
             onToggleFavorite={toggleFavorite}

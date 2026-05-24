@@ -14,7 +14,7 @@ import { games, genres, type Game } from '../data/games'
 type HomePageProps = {
   favoriteIds: number[]
   onOpenGame: (game: Game) => void
-  onToggleFavorite: (gameId: number) => void
+  onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
 }
 
 function HomePage({ favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) {

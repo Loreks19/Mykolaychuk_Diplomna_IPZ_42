@@ -8,7 +8,7 @@ type GameCardProps = {
   game: Game
   isFavorite?: boolean
   onOpen: (game: Game) => void
-  onToggleFavorite?: (gameId: number) => void
+  onToggleFavorite?: (gameId: number) => boolean | Promise<boolean>
 }
 
 function GameCard({ game, isFavorite = false, onOpen, onToggleFavorite }: GameCardProps) {

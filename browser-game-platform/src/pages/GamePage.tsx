@@ -1,9 +1,11 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import DeleteIcon from '@mui/icons-material/Delete'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import SendIcon from '@mui/icons-material/Send'
 import {
+  Alert,
   Avatar,
   Box,
   Button,
@@ -16,63 +18,189 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Game } from '../data/games'
+import { supabase } from '../services/supabaseClient'
+import type { CommentRow, RatingRow } from '../types/database'
 
 type GamePageProps = {
   game: Game
+  userId: string | null
+  userName: string
   isFavorite: boolean
   onBack: () => void
-  onToggleFavorite: (gameId: number) => void
+  onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
 }
 
-type GameComment = {
-  id: number
-  author: string
-  text: string
-  date: string
-}
-
-const startComments: GameComment[] = [
-  {
-    id: 1,
-    author: 'Олег',
-    text: 'Гра запускається швидко, для браузерної платформи виглядає нормально.',
-    date: '24.05.2026',
-  },
-  {
-    id: 2,
-    author: 'Марина',
-    text: 'Було б цікаво додати рейтинг і таблицю результатів.',
-    date: '24.05.2026',
-  },
-]
-
-function GamePage({ game, isFavorite, onBack, onToggleFavorite }: GamePageProps) {
-  const [comments, setComments] = useState(startComments)
+function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite }: GamePageProps) {
+  const [comments, setComments] = useState<CommentRow[]>([])
+  const [ratings, setRatings] = useState<RatingRow[]>([])
   const [commentText, setCommentText] = useState('')
-  const [userRating, setUserRating] = useState<number | null>(game.rating)
+  const [userRating, setUserRating] = useState<number | null>(null)
+  const [message, setMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
-  const addComment = () => {
-    const trimmedText = commentText.trim()
+  const averageRating = useMemo(() => {
+    if (ratings.length === 0) {
+      return game.rating
+    }
 
-    if (!trimmedText) {
+    const ratingSum = ratings.reduce((sum, rating) => sum + rating.value, 0)
+    return ratingSum / ratings.length
+  }, [game.rating, ratings])
+
+  useEffect(() => {
+    const loadGameData = async () => {
+      setIsLoading(true)
+      setMessage('')
+
+      const [
+        { data: commentsData, error: commentsError },
+        { data: ratingsData, error: ratingsError },
+      ] = await Promise.all([
+        supabase
+          .from('comments')
+          .select('id, game_id, user_id, author_name, text, created_at')
+          .eq('game_id', game.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('ratings')
+          .select('id, game_id, user_id, value, created_at')
+          .eq('game_id', game.id),
+      ])
+
+      if (commentsError || ratingsError) {
+        setMessage(commentsError?.message ?? ratingsError?.message ?? 'Не вдалося завантажити дані гри.')
+      }
+
+      const nextRatings = (ratingsData ?? []) as RatingRow[]
+      setComments((commentsData ?? []) as CommentRow[])
+      setRatings(nextRatings)
+      setUserRating(nextRatings.find((rating) => rating.user_id === userId)?.value ?? null)
+      setIsLoading(false)
+    }
+
+    void loadGameData()
+  }, [game.id, userId])
+
+  const reloadComments = async () => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('id, game_id, user_id, author_name, text, created_at')
+      .eq('game_id', game.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      setMessage(error.message)
       return
     }
 
-    const newComment: GameComment = {
-      id: Date.now(),
-      author: 'Гравець',
-      text: trimmedText,
-      date: new Date().toLocaleDateString('uk-UA'),
-    }
-
-    setComments((currentComments) => [newComment, ...currentComments])
-    setCommentText('')
+    setComments((data ?? []) as CommentRow[])
   }
 
-  const deleteComment = (commentId: number) => {
-    setComments((currentComments) => currentComments.filter((comment) => comment.id !== commentId))
+  const reloadRatings = async () => {
+    const { data, error } = await supabase
+      .from('ratings')
+      .select('id, game_id, user_id, value, created_at')
+      .eq('game_id', game.id)
+
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+
+    const nextRatings = (data ?? []) as RatingRow[]
+    setRatings(nextRatings)
+    setUserRating(nextRatings.find((rating) => rating.user_id === userId)?.value ?? null)
+  }
+
+  const addComment = async () => {
+    const trimmedText = commentText.trim()
+
+    if (!userId) {
+      setMessage('Щоб написати коментар, спочатку увійди в акаунт.')
+      return
+    }
+
+    if (!trimmedText) {
+      setMessage('Коментар не може бути порожнім.')
+      return
+    }
+
+    const { error } = await supabase.from('comments').insert({
+      game_id: game.id,
+      user_id: userId,
+      author_name: userName,
+      text: trimmedText,
+    })
+
+    if (error) {
+      setMessage(`Не вдалося зберегти коментар: ${error.message}`)
+      return
+    }
+
+    setCommentText('')
+    setMessage('Коментар додано.')
+    await reloadComments()
+  }
+
+  const deleteComment = async (commentId: number) => {
+    if (!userId) {
+      return
+    }
+
+    const { error } = await supabase.from('comments').delete().eq('id', commentId).eq('user_id', userId)
+
+    if (error) {
+      setMessage(`Не вдалося видалити коментар: ${error.message}`)
+      return
+    }
+
+    await reloadComments()
+  }
+
+  const saveRating = async (value: number | null) => {
+    if (!userId) {
+      setMessage('Щоб оцінити гру, спочатку увійди в акаунт.')
+      return
+    }
+
+    if (!value) {
+      return
+    }
+
+    const { error } = await supabase.from('ratings').upsert(
+      {
+        game_id: game.id,
+        user_id: userId,
+        value,
+      },
+      { onConflict: 'game_id,user_id' },
+    )
+
+    if (error) {
+      setMessage(`Не вдалося зберегти оцінку: ${error.message}`)
+      return
+    }
+
+    await reloadRatings()
+    setMessage('Оцінку збережено.')
+  }
+
+  const handleFavoriteClick = async () => {
+    if (!userId) {
+      setMessage('Щоб додати гру в обране, спочатку увійди в акаунт.')
+      return
+    }
+
+    const isSaved = await onToggleFavorite(game.id)
+
+    if (!isSaved) {
+      setMessage('Не вдалося змінити обране. Перевір, чи є ця гра в таблиці games у Supabase.')
+      return
+    }
+
+    setMessage(isFavorite ? 'Гру прибрано з обраного.' : 'Гру додано в обране.')
   }
 
   return (
@@ -112,16 +240,16 @@ function GamePage({ game, isFavorite, onBack, onToggleFavorite }: GamePageProps)
 
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ p: 3, alignItems: { md: 'center' } }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flex: 1 }}>
-            <Rating value={userRating} precision={0.5} onChange={(_, value) => setUserRating(value)} />
+            <Rating value={averageRating} precision={0.1} readOnly />
             <Typography color="text.secondary">
-              {userRating ? userRating.toFixed(1) : 'Без оцінки'}
+              {averageRating.toFixed(1)} {ratings.length > 0 ? `(${ratings.length})` : ''}
             </Typography>
           </Stack>
 
           <Button
             variant={isFavorite ? 'contained' : 'outlined'}
             startIcon={isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-            onClick={() => onToggleFavorite(game.id)}
+            onClick={handleFavoriteClick}
           >
             {isFavorite ? 'В обраному' : 'Додати в обране'}
           </Button>
@@ -169,58 +297,103 @@ function GamePage({ game, isFavorite, onBack, onToggleFavorite }: GamePageProps)
               Гра ще не завантажена
             </Typography>
             <Typography color="text.secondary">
-              Після експорту з Construct 2 потрібно додати файли в public/games
-              і прописати шлях у полі playUrl.
+              Після експорту з Construct 2 потрібно додати файли в public/games і прописати шлях у полі playUrl.
             </Typography>
           </Box>
         )}
       </Paper>
 
-      <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="h2" sx={{ mb: 1 }}>
-          Коментарі
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Поки коментарі працюють тільки у frontend і зникають після перезавантаження сторінки.
-        </Typography>
+      <Stack spacing={3}>
+        <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="h2" sx={{ mb: 1 }}>
+            Твоя оцінка
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>
+            Оцінка зберігається в Supabase. Якщо поставити нову оцінку, стара просто оновиться.
+          </Typography>
 
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            label="Написати коментар"
-            value={commentText}
-            onChange={(event) => setCommentText(event.target.value)}
-            multiline
-            minRows={2}
-          />
-          <Button variant="contained" endIcon={<SendIcon />} onClick={addComment} sx={{ alignSelf: { md: 'flex-start' } }}>
-            Додати
-          </Button>
-        </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
+            <Rating value={userRating} onChange={(_, value) => saveRating(value)} />
+            <Typography color="text.secondary">
+              {userRating ? `Ти оцінив гру на ${userRating}` : 'Ти ще не оцінював цю гру'}
+            </Typography>
+          </Stack>
+        </Paper>
 
-        <Stack spacing={2}>
-          {comments.map((comment) => (
-            <Box key={comment.id}>
-              <Stack direction="row" spacing={2}>
-                <Avatar sx={{ bgcolor: 'primary.main' }}>{comment.author[0]}</Avatar>
-                <Box sx={{ flex: 1 }}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between' }}>
-                    <Typography sx={{ fontWeight: 700 }}>{comment.author}</Typography>
-                    <Typography variant="body2" color="text.secondary">{comment.date}</Typography>
-                  </Stack>
-                  <Typography color="text.secondary" sx={{ lineHeight: 1.6, mt: 0.5 }}>
-                    {comment.text}
-                  </Typography>
-                  <Button color="error" size="small" onClick={() => deleteComment(comment.id)} sx={{ mt: 1 }}>
-                    Видалити
-                  </Button>
-                </Box>
-              </Stack>
-              <Divider sx={{ mt: 2 }} />
-            </Box>
-          ))}
-        </Stack>
-      </Paper>
+        <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="h2" sx={{ mb: 1 }}>
+            Коментарі
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 3 }}>
+            Коментарі зберігаються у таблиці comments і залишаються під конкретною грою.
+          </Typography>
+
+          {message && (
+            <Alert severity="info" sx={{ mb: 3 }} onClose={() => setMessage('')}>
+              {message}
+            </Alert>
+          )}
+
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Написати коментар"
+              value={commentText}
+              onChange={(event) => setCommentText(event.target.value)}
+              multiline
+              minRows={2}
+            />
+            <Button variant="contained" endIcon={<SendIcon />} onClick={addComment} sx={{ alignSelf: { md: 'flex-start' } }}>
+              Додати
+            </Button>
+          </Stack>
+
+          {isLoading && (
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Завантаження коментарів...
+            </Typography>
+          )}
+
+          <Stack spacing={2}>
+            {comments.map((comment) => (
+              <Box key={comment.id}>
+                <Stack direction="row" spacing={2}>
+                  <Avatar sx={{ bgcolor: 'primary.main' }}>{comment.author_name[0]}</Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between' }}>
+                      <Typography sx={{ fontWeight: 700 }}>{comment.author_name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {new Date(comment.created_at).toLocaleDateString('uk-UA')}
+                      </Typography>
+                    </Stack>
+                    <Typography color="text.secondary" sx={{ lineHeight: 1.6, mt: 0.5 }}>
+                      {comment.text}
+                    </Typography>
+                    {comment.user_id === userId && (
+                      <Button
+                        color="error"
+                        size="small"
+                        startIcon={<DeleteIcon />}
+                        onClick={() => deleteComment(comment.id)}
+                        sx={{ mt: 1 }}
+                      >
+                        Видалити
+                      </Button>
+                    )}
+                  </Box>
+                </Stack>
+                <Divider sx={{ mt: 2 }} />
+              </Box>
+            ))}
+          </Stack>
+
+          {!isLoading && comments.length === 0 && (
+            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              Коментарів поки немає. Можеш бути першим.
+            </Typography>
+          )}
+        </Paper>
+      </Stack>
     </Container>
   )
 }

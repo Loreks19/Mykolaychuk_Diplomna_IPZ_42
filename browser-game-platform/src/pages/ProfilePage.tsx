@@ -5,12 +5,13 @@ import GameCard from '../components/GameCard'
 import type { Game } from '../data/games'
 
 type ProfilePageProps = {
+  userName: string
   favoriteGames: Game[]
   onOpenGame: (game: Game) => void
-  onToggleFavorite: (gameId: number) => void
+  onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
 }
 
-function ProfilePage({ favoriteGames, onOpenGame, onToggleFavorite }: ProfilePageProps) {
+function ProfilePage({ userName, favoriteGames, onOpenGame, onToggleFavorite }: ProfilePageProps) {
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
@@ -24,10 +25,10 @@ function ProfilePage({ favoriteGames, onOpenGame, onToggleFavorite }: ProfilePag
               Особистий кабінет
             </Typography>
             <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
-              Гравець GamletLand
+              {userName}
             </Typography>
             <Typography color="text.secondary">
-              Тут користувач може переглядати обрані ігри, активність і майбутню статистику.
+              Тут користувач може переглядати обрані ігри. Пізніше сюди можна додати історію оцінок і коментарів.
             </Typography>
           </Box>
         </Stack>
@@ -40,12 +41,12 @@ function ProfilePage({ favoriteGames, onOpenGame, onToggleFavorite }: ProfilePag
             <Typography color="text.secondary">обрані ігри</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">Frontend</Typography>
-            <Typography color="text.secondary">поточний режим даних</Typography>
+            <Typography variant="h2">Supabase</Typography>
+            <Typography color="text.secondary">дані зберігаються в базі</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">Supabase</Typography>
-            <Typography color="text.secondary">планується для збереження</Typography>
+            <Typography variant="h2">Frontend</Typography>
+            <Typography color="text.secondary">кабінет без зайвої складності</Typography>
           </Box>
         </Stack>
       </Paper>
@@ -86,7 +87,7 @@ function ProfilePage({ favoriteGames, onOpenGame, onToggleFavorite }: ProfilePag
             Обраних ігор поки немає
           </Typography>
           <Typography color="text.secondary">
-            Додай гру в обране з каталогу, і вона з’явиться тут.
+            Додай гру в обране з каталогу, і вона з'явиться тут.
           </Typography>
         </Paper>
       )}

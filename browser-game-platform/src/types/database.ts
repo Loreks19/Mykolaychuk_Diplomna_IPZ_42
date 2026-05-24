@@ -31,6 +31,7 @@ export type CommentRow = {
   id: number
   game_id: number
   user_id: string
+  author_name: string
   text: string
   created_at: string
 }
