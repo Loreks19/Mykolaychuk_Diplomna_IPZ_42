@@ -19,7 +19,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Game } from '../data/games'
 import { supabase } from '../services/supabaseClient'
 import type { CommentRow, RatingRow, UserRole } from '../types/database'
@@ -36,6 +36,7 @@ type GamePageProps = {
 }
 
 function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onBack, onToggleFavorite }: GamePageProps) {
+  const gameFrameRef = useRef<HTMLIFrameElement | null>(null)
   const [comments, setComments] = useState<CommentRow[]>([])
   const [ratings, setRatings] = useState<RatingRow[]>([])
   const [commentText, setCommentText] = useState('')
@@ -214,6 +215,10 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
     setMessage(isFavorite ? 'Гру прибрано з обраного.' : 'Гру додано в обране.')
   }
 
+  const focusGameFrame = () => {
+    gameFrameRef.current?.focus()
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ mb: 3 }}>
@@ -293,13 +298,22 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
         {game.playUrl ? (
           <Box
             component="iframe"
+            ref={gameFrameRef}
             title={game.title}
             src={game.playUrl}
+            allow="autoplay; fullscreen; gamepad; pointer-lock"
+            allowFullScreen
+            tabIndex={0}
+            onLoad={focusGameFrame}
+            onMouseEnter={focusGameFrame}
+            onPointerDown={focusGameFrame}
             sx={{
               display: 'block',
               width: '100%',
               height: { xs: 420, md: 640 },
               border: 0,
+              pointerEvents: 'auto',
+              userSelect: 'none',
             }}
           />
         ) : (

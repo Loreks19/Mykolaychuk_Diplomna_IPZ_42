@@ -2,6 +2,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
 import SaveIcon from '@mui/icons-material/Save'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
 import {
   Alert,
   Box,
@@ -17,6 +18,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import JSZip from 'jszip'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Game } from '../data/games'
 import { supabase } from '../services/supabaseClient'
@@ -52,10 +54,10 @@ const emptyForm: AdminGameForm = {
   title: '',
   genreId: '',
   description: '',
-  players: '',
-  difficulty: '',
+  players: '1 гравець',
+  difficulty: 'Легка',
   coverImage: '',
-  rating: '',
+  rating: '4.0',
   playUrl: '',
 }
 
@@ -65,6 +67,57 @@ const createSlug = (title: string) =>
     .toLowerCase()
     .replace(/[^a-z0-9а-яіїєґ\s-]/gi, '')
     .replace(/\s+/g, '-')
+
+const cleanZipPath = (path: string) =>
+  path
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter((part) => part && part !== '.' && part !== '..')
+    .join('/')
+
+const getContentType = (fileName: string): string => {
+  const extension = fileName.split('.').pop()?.toLowerCase()
+
+  switch (extension) {
+    case 'html':
+      return 'text/html'
+    case 'js':
+      return 'application/javascript'
+    case 'css':
+      return 'text/css'
+    case 'json':
+      return 'application/json'
+    case 'png':
+      return 'image/png'
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg'
+    case 'webp':
+      return 'image/webp'
+    case 'gif':
+      return 'image/gif'
+    case 'svg':
+      return 'image/svg+xml'
+    case 'mp3':
+      return 'audio/mpeg'
+    case 'ogg':
+      return 'audio/ogg'
+    case 'wav':
+      return 'audio/wav'
+    case 'mp4':
+      return 'video/mp4'
+    case 'wasm':
+      return 'application/wasm'
+    default:
+      return 'application/octet-stream'
+  }
+}
+
+const createStorageFile = (blob: Blob, fileName: string) => {
+  const contentType = getContentType(fileName)
+  return new File([blob], fileName.split('/').pop() ?? 'game-file', { type: contentType })
+}
 
 function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('games')
@@ -77,6 +130,10 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isCoverUploading, setIsCoverUploading] = useState(false)
+  const [isGameUploading, setIsGameUploading] = useState(false)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
+  const [gameZipFile, setGameZipFile] = useState<File | null>(null)
 
   const gameTitleById = useMemo(
     () => new Map(gameList.map((game) => [game.id, game.title])),
@@ -162,6 +219,9 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
 
   const startEdit = (game: EditableGame) => {
     setEditingId(game.id)
+    setCoverFile(null)
+    setCoverPreviewUrl(null)
+    setGameZipFile(null)
     setForm({
       title: game.title,
       genreId: game.genreId ? String(game.genreId) : '',
@@ -179,17 +239,91 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   const clearForm = () => {
     setEditingId(null)
     setForm(emptyForm)
+    setCoverFile(null)
+    setCoverPreviewUrl(null)
+    setGameZipFile(null)
     setMessage('')
   }
 
+  const startCreate = () => {
+    clearForm()
+    setActiveTab('games')
+    setMessage('Заповни форму та натисни "Додати гру".')
+  }
+
+  const uploadCoverImage = async (gameId: number, title: string, file: File) => {
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    const slug = createSlug(title) || `game-${gameId}`
+    const filePath = `${gameId}/${slug}-${Date.now()}.${extension}`
+    const { error: uploadError } = await supabase.storage
+      .from('game-covers')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      })
+
+    if (uploadError) {
+      throw new Error(uploadError.message)
+    }
+
+    const { data } = supabase.storage.from('game-covers').getPublicUrl(filePath)
+    return data.publicUrl
+  }
+
+  const uploadGameArchive = async (gameId: number, title: string, file: File) => {
+    const zip = await JSZip.loadAsync(file)
+    const entries = Object.values(zip.files).filter((entry) => {
+      const path = cleanZipPath(entry.name)
+      return !entry.dir && path && !path.startsWith('__MACOSX/') && !path.endsWith('.DS_Store')
+    })
+    const indexEntry = entries.find((entry) => cleanZipPath(entry.name).toLowerCase().endsWith('/index.html'))
+      ?? entries.find((entry) => cleanZipPath(entry.name).toLowerCase() === 'index.html')
+
+    if (!indexEntry) {
+      throw new Error('В архіві не знайдено index.html.')
+    }
+
+    const rootPrefix = cleanZipPath(indexEntry.name).replace(/index\.html$/i, '')
+    const slug = createSlug(title) || `game-${gameId}`
+    const uploadRoot = `${gameId}/${slug}-${Date.now()}`
+
+    for (const entry of entries) {
+      const originalPath = cleanZipPath(entry.name)
+      const relativePath = rootPrefix && originalPath.startsWith(rootPrefix)
+        ? originalPath.slice(rootPrefix.length)
+        : originalPath
+
+      if (!relativePath) {
+        continue
+      }
+
+      const blob = await entry.async('blob')
+      const storageFile = createStorageFile(blob, relativePath)
+      const { error } = await supabase.storage
+        .from('game-files')
+        .upload(`${uploadRoot}/${relativePath}`, storageFile, {
+          cacheControl: '3600',
+          contentType: getContentType(relativePath),
+          upsert: true,
+        })
+
+      if (error) {
+        throw new Error(`${relativePath}: ${error.message}`)
+      }
+    }
+
+    const { data } = supabase.storage.from('game-files').getPublicUrl(`${uploadRoot}/index.html`)
+    return data.publicUrl
+  }
+
   const saveGame = async () => {
-    if (!editingId) {
-      setMessage('Спочатку обери гру зі списку для редагування.')
+    if (!form.title.trim() || !form.description.trim() || !form.genreId) {
+      setMessage('Заповни назву, жанр та опис гри.')
       return
     }
 
-    if (!form.title.trim() || !form.description.trim() || !form.genreId) {
-      setMessage('Заповни назву, жанр та опис гри.')
+    if (!editingId && !form.coverImage.trim() && !coverFile) {
+      setMessage('Для нової гри додай заставку з ПК або вкажи шлях до зображення.')
       return
     }
 
@@ -200,72 +334,150 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
       return
     }
 
-    const { error } = await supabase
-      .from('games')
-      .update({
-        title: form.title.trim(),
-        slug: createSlug(form.title),
-        genre_id: Number(form.genreId),
-        description: form.description.trim(),
-        players: form.players.trim() || '1 гравець',
-        difficulty: form.difficulty.trim() || 'Легка',
-        cover_image: form.coverImage.trim(),
-        play_url: form.playUrl.trim() || null,
-        rating,
-      })
-      .eq('id', editingId)
+    const gamePayload = {
+      title: form.title.trim(),
+      slug: createSlug(form.title),
+      genre_id: Number(form.genreId),
+      description: form.description.trim(),
+      players: form.players.trim() || '1 гравець',
+      difficulty: form.difficulty.trim() || 'Легка',
+      cover_image: form.coverImage.trim() || '/games_images/shooter.png',
+      play_url: form.playUrl.trim() || null,
+      rating,
+    }
 
-    if (error) {
-      setMessage(`Не вдалося зберегти гру: ${error.message}`)
+    setIsCoverUploading(Boolean(coverFile))
+    setIsGameUploading(Boolean(gameZipFile))
+
+    if (editingId) {
+      const { error } = await supabase
+        .from('games')
+        .update(gamePayload)
+        .eq('id', editingId)
+
+      if (error) {
+        setIsCoverUploading(false)
+        setIsGameUploading(false)
+        setMessage(`Не вдалося зберегти гру: ${error.message}`)
+        return
+      }
+
+      if (coverFile) {
+        try {
+          const coverUrl = await uploadCoverImage(editingId, form.title, coverFile)
+          const { error: coverError } = await supabase
+            .from('games')
+            .update({ cover_image: coverUrl })
+            .eq('id', editingId)
+
+          if (coverError) {
+            setMessage(`Заставку завантажено, але не вдалося оновити гру: ${coverError.message}`)
+            setIsCoverUploading(false)
+            setIsGameUploading(false)
+            return
+          }
+        } catch (error) {
+          setIsCoverUploading(false)
+          setIsGameUploading(false)
+          setMessage(`Не вдалося завантажити заставку: ${error instanceof Error ? error.message : 'невідома помилка'}`)
+          return
+        }
+      }
+
+      if (gameZipFile) {
+        try {
+          const playUrl = await uploadGameArchive(editingId, form.title, gameZipFile)
+          const { error: gameFilesError } = await supabase
+            .from('games')
+            .update({ play_url: playUrl })
+            .eq('id', editingId)
+
+          if (gameFilesError) {
+            setMessage(`Архів гри завантажено, але не вдалося оновити шлях запуску: ${gameFilesError.message}`)
+            setIsCoverUploading(false)
+            setIsGameUploading(false)
+            return
+          }
+        } catch (error) {
+          setIsCoverUploading(false)
+          setIsGameUploading(false)
+          setMessage(`Не вдалося завантажити архів гри: ${error instanceof Error ? error.message : 'невідома помилка'}`)
+          return
+        }
+      }
+
+      setMessage('Гру оновлено.')
+      setIsCoverUploading(false)
+      setIsGameUploading(false)
+      clearForm()
+      await loadAdminData()
+      await onCatalogChange()
       return
     }
 
-    setMessage('Гру оновлено.')
+    const { data, error } = await supabase
+      .from('games')
+      .insert(gamePayload)
+      .select('id')
+      .single<Pick<GameRow, 'id'>>()
+
+    if (error || !data) {
+      setIsCoverUploading(false)
+      setIsGameUploading(false)
+      setMessage(`Не вдалося додати гру: ${error?.message ?? 'гра не створена'}`)
+      return
+    }
+
+    if (coverFile) {
+      try {
+        const coverUrl = await uploadCoverImage(data.id, form.title, coverFile)
+        const { error: coverError } = await supabase
+          .from('games')
+          .update({ cover_image: coverUrl })
+          .eq('id', data.id)
+
+        if (coverError) {
+          setMessage(`Гру додано, але не вдалося зберегти заставку: ${coverError.message}`)
+          setIsCoverUploading(false)
+          setIsGameUploading(false)
+          return
+        }
+      } catch (error) {
+        setMessage(`Гру додано, але не вдалося завантажити заставку: ${error instanceof Error ? error.message : 'невідома помилка'}`)
+        setIsCoverUploading(false)
+        setIsGameUploading(false)
+        return
+      }
+    }
+
+    if (gameZipFile) {
+      try {
+        const playUrl = await uploadGameArchive(data.id, form.title, gameZipFile)
+        const { error: gameFilesError } = await supabase
+          .from('games')
+          .update({ play_url: playUrl })
+          .eq('id', data.id)
+
+        if (gameFilesError) {
+          setMessage(`Гру додано, але не вдалося зберегти шлях запуску: ${gameFilesError.message}`)
+          setIsCoverUploading(false)
+          setIsGameUploading(false)
+          return
+        }
+      } catch (error) {
+        setMessage(`Гру додано, але не вдалося завантажити архів гри: ${error instanceof Error ? error.message : 'невідома помилка'}`)
+        setIsCoverUploading(false)
+        setIsGameUploading(false)
+        return
+      }
+    }
+
+    setMessage('Гру додано.')
+    setIsCoverUploading(false)
+    setIsGameUploading(false)
     clearForm()
     await loadAdminData()
     await onCatalogChange()
-  }
-
-  const uploadCoverImage = async (file: File) => {
-    if (!editingId) {
-      setMessage('Спочатку обери гру для редагування.')
-      return
-    }
-
-    if (!file.type.startsWith('image/')) {
-      setMessage('Обери файл зображення.')
-      return
-    }
-
-    if (file.size > 4 * 1024 * 1024) {
-      setMessage('Зображення має бути до 4 MB.')
-      return
-    }
-
-    setIsCoverUploading(true)
-    setMessage('')
-
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
-    const slug = createSlug(form.title) || `game-${editingId}`
-    const filePath = `${editingId}/${slug}-${Date.now()}.${extension}`
-    const { error: uploadError } = await supabase.storage
-      .from('game-covers')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-      })
-
-    if (uploadError) {
-      setIsCoverUploading(false)
-      setMessage(`Не вдалося завантажити заставку: ${uploadError.message}`)
-      return
-    }
-
-    const { data } = supabase.storage.from('game-covers').getPublicUrl(filePath)
-
-    updateField('coverImage', data.publicUrl)
-    setIsCoverUploading(false)
-    setMessage('Заставку завантажено. Натисни "Зберегти", щоб застосувати її до гри.')
   }
 
   const addGenre = async () => {
@@ -299,6 +511,19 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
 
     setComments((currentComments) => currentComments.filter((comment) => comment.id !== commentId))
     setMessage('Коментар видалено.')
+  }
+
+  const deleteGenre = async (genreId: number) => {
+    const { error } = await supabase.from('genres').delete().eq('id', genreId)
+
+    if (error) {
+      setMessage(`Не вдалося видалити жанр: ${error.message}`)
+      return
+    }
+
+    setMessage('Жанр видалено.')
+    await loadAdminData()
+    await onCatalogChange()
   }
 
   if (userRole !== 'admin') {
@@ -349,7 +574,7 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} sx={{ alignItems: 'flex-start' }}>
           <Paper sx={{ width: { xs: '100%', lg: 420 }, p: 3, border: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h2" sx={{ mb: 2 }}>
-              {editingId ? 'Редагувати гру' : 'Обери гру'}
+              {editingId ? 'Редагувати гру' : 'Додати гру'}
             </Typography>
 
             <Stack spacing={2}>
@@ -369,9 +594,9 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
                   component="label"
                   variant="outlined"
                   startIcon={<PhotoCameraIcon />}
-                  disabled={isCoverUploading || !editingId}
+                  disabled={isCoverUploading}
                 >
-                  {isCoverUploading ? 'Завантаження...' : 'Обрати заставку з ПК'}
+                  {coverFile ? coverFile.name : 'Обрати заставку з ПК'}
                   <Box
                     component="input"
                     type="file"
@@ -381,7 +606,63 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
                       const file = event.target.files?.[0]
 
                       if (file) {
-                        void uploadCoverImage(file)
+                        if (!file.type.startsWith('image/')) {
+                          setMessage('Обери файл зображення.')
+                        } else if (file.size > 4 * 1024 * 1024) {
+                          setMessage('Зображення має бути до 4 MB.')
+                        } else {
+                          setCoverFile(file)
+                          setCoverPreviewUrl(URL.createObjectURL(file))
+                          setMessage('Заставку обрано. Натисни "Зберегти", щоб завантажити її.')
+                        }
+                      }
+
+                      event.target.value = ''
+                    }}
+                  />
+                </Button>
+                {(coverPreviewUrl || form.coverImage) && (
+                  <Box
+                    component="img"
+                    src={coverPreviewUrl ?? form.coverImage}
+                    alt="Попередній перегляд заставки"
+                    sx={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                  />
+                )}
+              </Stack>
+              <Stack spacing={1}>
+                <TextField
+                  label="Запуск гри"
+                  value={form.playUrl}
+                  onChange={(event) => updateField('playUrl', event.target.value)}
+                  placeholder="/games/my-game/index.html або автоматично після ZIP"
+                  helperText="Для стабільного запуску HTML5-гри поклади її папку в public/games і вкажи шлях /games/назва/index.html."
+                  fullWidth
+                />
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                  disabled={isGameUploading}
+                >
+                  {gameZipFile ? gameZipFile.name : 'Обрати ZIP гри з ПК'}
+                  <Box
+                    component="input"
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+
+                      if (file) {
+                        if (!file.name.toLowerCase().endsWith('.zip')) {
+                          setMessage('Обери ZIP-архів гри.')
+                        } else if (file.size > 50 * 1024 * 1024) {
+                          setMessage('Архів гри має бути до 50 MB.')
+                        } else {
+                          setGameZipFile(file)
+                          setMessage('ZIP гри обрано. Натисни кнопку збереження, щоб завантажити файли гри.')
+                        }
                       }
 
                       event.target.value = ''
@@ -389,11 +670,10 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
                   />
                 </Button>
               </Stack>
-              <TextField label="Шлях запуску" value={form.playUrl} onChange={(event) => updateField('playUrl', event.target.value)} placeholder="/games/shooter/index.html" fullWidth />
 
               <Stack direction="row" spacing={1}>
                 <Button variant="contained" startIcon={<SaveIcon />} onClick={saveGame}>
-                  Зберегти
+                  {isCoverUploading || isGameUploading ? 'Збереження...' : editingId ? 'Зберегти' : 'Додати гру'}
                 </Button>
                 <Button variant="outlined" onClick={clearForm}>Очистити</Button>
               </Stack>
@@ -401,7 +681,10 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
           </Paper>
 
           <Paper sx={{ flex: 1, width: '100%', p: 3, border: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="h2" sx={{ mb: 2 }}>Список ігор</Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="h2">Список ігор</Typography>
+              <Button variant="contained" onClick={startCreate}>Додати нову гру</Button>
+            </Stack>
             <Stack spacing={2}>
               {gameList.map((game) => (
                 <Box key={game.id}>
@@ -448,7 +731,15 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
           </Stack>
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            {genreList.map((genre) => <Chip key={genre.id} label={genre.name} color="primary" />)}
+            {genreList.map((genre) => (
+              <Chip
+                key={genre.id}
+                label={genre.name}
+                color="primary"
+                onDelete={() => deleteGenre(genre.id)}
+                deleteIcon={<DeleteIcon />}
+              />
+            ))}
           </Stack>
         </Paper>
       )}
