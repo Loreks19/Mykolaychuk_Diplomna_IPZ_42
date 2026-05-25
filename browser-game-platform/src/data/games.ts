@@ -1,4 +1,4 @@
-export type GameGenre = 'Екшн' | 'Аркада' | 'Головоломка' | 'Стратегія'
+export type GameGenre = string
 
 export type Game = {
   id: number
@@ -63,4 +63,4 @@ export const games: Game[] = [
 
 export const favoriteGames = games.filter((game) => game.id === 1 || game.id === 2)
 
-export const genres: Array<GameGenre | 'Усі'> = ['Усі', 'Екшн', 'Аркада', 'Головоломка', 'Стратегія']
+export const genres: GameGenre[] = ['Екшн', 'Аркада', 'Головоломка', 'Стратегія']

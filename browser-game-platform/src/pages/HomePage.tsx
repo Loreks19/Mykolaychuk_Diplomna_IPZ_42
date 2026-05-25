@@ -9,15 +9,17 @@ import {
 } from '@mui/material'
 import { useMemo, useState } from 'react'
 import GameCard from '../components/GameCard'
-import { games, genres, type Game } from '../data/games'
+import type { Game, GameGenre } from '../data/games'
 
 type HomePageProps = {
+  games: Game[]
+  genres: GameGenre[]
   favoriteIds: number[]
   onOpenGame: (game: Game) => void
   onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
 }
 
-function HomePage({ favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) {
+function HomePage({ games, genres, favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) {
   const [searchText, setSearchText] = useState('')
   const [selectedGenre, setSelectedGenre] = useState('Усі')
 
@@ -30,7 +32,7 @@ function HomePage({ favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) 
 
       return fitsGenre && fitsSearch
     })
-  }, [searchText, selectedGenre])
+  }, [games, searchText, selectedGenre])
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
@@ -86,7 +88,7 @@ function HomePage({ favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) 
               <Typography color="text.secondary">ігор у каталозі</Typography>
             </Box>
             <Box>
-              <Typography variant="h2">{genres.length - 1}</Typography>
+              <Typography variant="h2">{genres.length}</Typography>
               <Typography color="text.secondary">жанри для фільтрації</Typography>
             </Box>
           </Stack>
@@ -103,7 +105,7 @@ function HomePage({ favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) 
           />
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', minWidth: { md: 420 } }}>
-            {genres.map((genre) => (
+            {['Усі', ...genres].map((genre) => (
               <Button
                 key={genre}
                 variant={selectedGenre === genre ? 'contained' : 'outlined'}

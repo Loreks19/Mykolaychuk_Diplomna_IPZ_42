@@ -4,6 +4,7 @@ export type Profile = {
   id: string
   full_name: string
   role: Exclude<UserRole, 'guest'>
+  avatar_url: string | null
   created_at: string
 }
 
@@ -17,7 +18,7 @@ export type GameRow = {
   id: number
   title: string
   slug: string
-  genre_id: number
+  genre_id: number | null
   description: string
   players: string
   difficulty: string
@@ -32,6 +33,8 @@ export type CommentRow = {
   game_id: number
   user_id: string
   author_name: string
+  author_role: Exclude<UserRole, 'guest'>
+  author_avatar_url: string | null
   text: string
   created_at: string
 }

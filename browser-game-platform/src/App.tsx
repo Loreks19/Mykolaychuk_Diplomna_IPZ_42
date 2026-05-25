@@ -1,7 +1,7 @@
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import { useEffect, useState } from 'react'
 import AppLayout from './components/AppLayout'
-import { games, type Game } from './data/games'
+import { games as fallbackGames, genres as fallbackGenres, type Game, type GameGenre } from './data/games'
 import AboutPage from './pages/AboutPage'
 import AdminPage from './pages/AdminPage'
 import GamePage from './pages/GamePage'
@@ -11,40 +11,69 @@ import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 import { supabase } from './services/supabaseClient'
 import { theme } from './theme'
-import type { Profile, UserRole } from './types/database'
+import type { GameRow, GenreRow, Profile, UserRole } from './types/database'
 
 type AppPage = 'home' | 'register' | 'login' | 'admin' | 'about' | 'profile' | 'game'
+type LoginMode = 'user' | 'admin'
+
+const pageFromHash = (hash: string): AppPage => {
+  const cleanHash = hash.replace(/^#/, '')
+
+  if (cleanHash.startsWith('game/')) {
+    return 'game'
+  }
+
+  if (['register', 'login', 'admin', 'about', 'profile'].includes(cleanHash)) {
+    return cleanHash as AppPage
+  }
+
+  return 'home'
+}
+
+const gameSlugFromHash = (hash: string) => {
+  const cleanHash = hash.replace(/^#/, '')
+  return cleanHash.startsWith('game/') ? cleanHash.slice(5) : null
+}
 
 function App() {
-  const [activePage, setActivePage] = useState<AppPage>('home')
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null)
+  const initialGameSlug = gameSlugFromHash(window.location.hash)
+  const [activePage, setActivePage] = useState<AppPage>(() => pageFromHash(window.location.hash))
+  const [selectedGame, setSelectedGame] = useState<Game | null>(() =>
+    initialGameSlug ? fallbackGames.find((game) => game.slug === initialGameSlug) ?? null : null,
+  )
   const [userRole, setUserRole] = useState<UserRole>('guest')
   const [userId, setUserId] = useState<string | null>(null)
   const [userName, setUserName] = useState('Гравець')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
+  const [games, setGames] = useState<Game[]>(fallbackGames)
+  const [genres, setGenres] = useState<GameGenre[]>(fallbackGenres)
 
   const openPage = (page: AppPage) => {
     setSelectedGame(null)
     setActivePage(page)
+    window.location.hash = page === 'home' ? 'home' : page
   }
 
   const openGamePage = (game: Game) => {
     setSelectedGame(game)
     setActivePage('game')
+    window.location.hash = `game/${game.slug}`
   }
 
   const loadUserProfile = async (userId: string) => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, role, avatar_url')
         .eq('id', userId)
-        .single<Pick<Profile, 'full_name'>>()
+        .single<Pick<Profile, 'full_name' | 'role' | 'avatar_url'>>()
 
       if (!error && data) {
-        setUserRole('user')
+        setUserRole(data.role)
         setUserName(data.full_name)
-        return
+        setAvatarUrl(data.avatar_url)
+        return data.role
       }
 
       await new Promise((resolve) => {
@@ -53,6 +82,59 @@ function App() {
     }
 
     setUserRole('user')
+    return 'user'
+  }
+
+  const loadCatalog = async () => {
+    const [
+      { data: genreData },
+      { data: gameData },
+    ] = await Promise.all([
+      supabase
+        .from('genres')
+        .select('id, name, created_at')
+        .order('name', { ascending: true }),
+      supabase
+        .from('games')
+        .select('id, title, slug, genre_id, description, players, difficulty, cover_image, play_url, rating, created_at')
+        .order('id', { ascending: true }),
+    ])
+
+    const nextGenres = (genreData ?? []) as GenreRow[]
+    const nextGames = (gameData ?? []) as GameRow[]
+    const genreById = new Map(nextGenres.map((genre) => [genre.id, genre.name]))
+
+    if (nextGenres.length > 0) {
+      setGenres(nextGenres.map((genre) => genre.name))
+    }
+
+    if (nextGames.length > 0) {
+      const mappedGames = nextGames.map((game) => ({
+        id: game.id,
+        title: game.title,
+        slug: game.slug,
+        genre: (game.genre_id ? genreById.get(game.genre_id) : undefined) ?? 'Без жанру',
+        description: game.description,
+        players: game.players,
+        difficulty: game.difficulty,
+        coverImage: game.cover_image,
+        rating: game.rating,
+        playUrl: game.play_url ?? undefined,
+      }))
+
+      setGames(mappedGames)
+
+      const hashedGameSlug = gameSlugFromHash(window.location.hash)
+
+      if (hashedGameSlug) {
+        const hashedGame = mappedGames.find((game) => game.slug === hashedGameSlug)
+
+        if (hashedGame) {
+          setSelectedGame(hashedGame)
+          setActivePage('game')
+        }
+      }
+    }
   }
 
   const loadFavorites = async (currentUserId: string) => {
@@ -65,6 +147,10 @@ function App() {
   }
 
   useEffect(() => {
+    const catalogTimer = window.setTimeout(() => {
+      void loadCatalog()
+    }, 0)
+
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
         setUserId(data.user.id)
@@ -82,14 +168,39 @@ function App() {
         setUserId(null)
         setUserRole('guest')
         setUserName('Гравець')
+        setAvatarUrl(null)
         setFavoriteIds([])
       }
     })
 
     return () => {
+      window.clearTimeout(catalogTimer)
       data.subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const nextPage = pageFromHash(window.location.hash)
+      const nextGameSlug = gameSlugFromHash(window.location.hash)
+
+      if (nextPage === 'game' && nextGameSlug) {
+        const nextGame = games.find((game) => game.slug === nextGameSlug)
+        setSelectedGame(nextGame ?? null)
+        setActivePage(nextGame ? 'game' : 'home')
+        return
+      }
+
+      setSelectedGame(null)
+      setActivePage(nextPage)
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [games])
 
   const toggleFavorite = async (gameId: number) => {
     if (!userId) {
@@ -128,35 +239,64 @@ function App() {
     return true
   }
 
-  const login = async () => {
+  const clearCurrentUser = () => {
+    setUserId(null)
+    setUserRole('guest')
+    setUserName('Гравець')
+    setAvatarUrl(null)
+    setFavoriteIds([])
+  }
+
+  const login = async (mode: LoginMode = 'user') => {
     const { data } = await supabase.auth.getUser()
 
     if (!data.user) {
-      return
+      return 'Не вдалося знайти активну сесію.'
     }
 
-    await loadUserProfile(data.user.id)
+    const nextRole = await loadUserProfile(data.user.id)
+
+    if (mode === 'user' && nextRole === 'admin') {
+      await supabase.auth.signOut()
+      clearCurrentUser()
+      return 'Цей акаунт має роль адміністратора. Обери режим "Адмін" для входу.'
+    }
+
+    if (mode === 'admin' && nextRole !== 'admin') {
+      await supabase.auth.signOut()
+      clearCurrentUser()
+      return 'Цей акаунт не має прав адміністратора.'
+    }
+
     setUserId(data.user.id)
     await loadFavorites(data.user.id)
-    openPage('profile')
-  }
-
-  const loginAsAdmin = async () => {
-    await supabase.auth.signOut()
-    setUserId(null)
-    setUserRole('admin')
-    setUserName('Адміністратор')
-    setFavoriteIds([])
-    openPage('admin')
+    openPage(nextRole === 'admin' ? 'admin' : 'profile')
+    return true
   }
 
   const logout = async () => {
     await supabase.auth.signOut()
-    setUserId(null)
-    setUserRole('guest')
-    setUserName('Гравець')
-    setFavoriteIds([])
+    clearCurrentUser()
     openPage('home')
+  }
+
+  const updateProfileAvatar = async (nextAvatarUrl: string | null) => {
+    if (!userId) {
+      return false
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: nextAvatarUrl })
+      .eq('id', userId)
+
+    if (error) {
+      console.error('Avatar update error:', error.message)
+      return false
+    }
+
+    setAvatarUrl(nextAvatarUrl)
+    return true
   }
 
   const favoriteGames = games.filter((game) => favoriteIds.includes(game.id))
@@ -175,15 +315,23 @@ function App() {
         onLogoutClick={logout}
       >
         {activePage === 'register' && <RegisterPage onRegisterSuccess={login} />}
-        {activePage === 'login' && <LoginPage onLogin={login} onAdminLogin={loginAsAdmin} />}
-        {activePage === 'admin' && <AdminPage />}
+        {activePage === 'login' && <LoginPage onLogin={login} />}
+        {activePage === 'admin' && (
+          <AdminPage
+            userRole={userRole}
+            onCatalogChange={loadCatalog}
+          />
+        )}
         {activePage === 'about' && <AboutPage />}
         {activePage === 'profile' && (
           <ProfilePage
+            userId={userId}
             userName={userName}
+            avatarUrl={avatarUrl}
             favoriteGames={favoriteGames}
             onOpenGame={openGamePage}
             onToggleFavorite={toggleFavorite}
+            onAvatarUpdate={updateProfileAvatar}
           />
         )}
         {activePage === 'game' && selectedGame && (
@@ -191,6 +339,8 @@ function App() {
             game={selectedGame}
             userId={userId}
             userName={userName}
+            userRole={userRole}
+            avatarUrl={avatarUrl}
             isFavorite={favoriteIds.includes(selectedGame.id)}
             onBack={() => openPage('home')}
             onToggleFavorite={toggleFavorite}
@@ -198,6 +348,8 @@ function App() {
         )}
         {activePage === 'home' && (
           <HomePage
+            games={games}
+            genres={genres}
             favoriteIds={favoriteIds}
             onOpenGame={openGamePage}
             onToggleFavorite={toggleFavorite}

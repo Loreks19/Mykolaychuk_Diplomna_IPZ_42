@@ -4,6 +4,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import SendIcon from '@mui/icons-material/Send'
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium'
 import {
   Alert,
   Avatar,
@@ -21,18 +22,20 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import type { Game } from '../data/games'
 import { supabase } from '../services/supabaseClient'
-import type { CommentRow, RatingRow } from '../types/database'
+import type { CommentRow, RatingRow, UserRole } from '../types/database'
 
 type GamePageProps = {
   game: Game
   userId: string | null
   userName: string
+  userRole: UserRole
+  avatarUrl: string | null
   isFavorite: boolean
   onBack: () => void
   onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
 }
 
-function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite }: GamePageProps) {
+function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onBack, onToggleFavorite }: GamePageProps) {
   const [comments, setComments] = useState<CommentRow[]>([])
   const [ratings, setRatings] = useState<RatingRow[]>([])
   const [commentText, setCommentText] = useState('')
@@ -60,7 +63,7 @@ function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite
       ] = await Promise.all([
         supabase
           .from('comments')
-          .select('id, game_id, user_id, author_name, text, created_at')
+          .select('id, game_id, user_id, author_name, author_role, author_avatar_url, text, created_at')
           .eq('game_id', game.id)
           .order('created_at', { ascending: false }),
         supabase
@@ -86,7 +89,7 @@ function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite
   const reloadComments = async () => {
     const { data, error } = await supabase
       .from('comments')
-      .select('id, game_id, user_id, author_name, text, created_at')
+      .select('id, game_id, user_id, author_name, author_role, author_avatar_url, text, created_at')
       .eq('game_id', game.id)
       .order('created_at', { ascending: false })
 
@@ -131,6 +134,8 @@ function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite
       game_id: game.id,
       user_id: userId,
       author_name: userName,
+      author_role: userRole === 'admin' ? 'admin' : 'user',
+      author_avatar_url: avatarUrl,
       text: trimmedText,
     })
 
@@ -149,7 +154,13 @@ function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite
       return
     }
 
-    const { error } = await supabase.from('comments').delete().eq('id', commentId).eq('user_id', userId)
+    let deleteQuery = supabase.from('comments').delete().eq('id', commentId)
+
+    if (userRole !== 'admin') {
+      deleteQuery = deleteQuery.eq('user_id', userId)
+    }
+
+    const { error } = await deleteQuery
 
     if (error) {
       setMessage(`Не вдалося видалити коментар: ${error.message}`)
@@ -358,10 +369,27 @@ function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite
             {comments.map((comment) => (
               <Box key={comment.id}>
                 <Stack direction="row" spacing={2}>
-                  <Avatar sx={{ bgcolor: 'primary.main' }}>{comment.author_name[0]}</Avatar>
+                  <Avatar src={comment.author_avatar_url ?? undefined} sx={{ bgcolor: comment.author_role === 'admin' ? '#D7A721' : 'primary.main' }}>
+                    {comment.author_name[0]}
+                  </Avatar>
                   <Box sx={{ flex: 1 }}>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between' }}>
-                      <Typography sx={{ fontWeight: 700 }}>{comment.author_name}</Typography>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Typography sx={{ fontWeight: 700 }}>{comment.author_name}</Typography>
+                        {comment.author_role === 'admin' && (
+                          <Chip
+                            icon={<WorkspacePremiumIcon />}
+                            label="Адмін"
+                            size="small"
+                            sx={{
+                              bgcolor: 'rgba(215, 167, 33, 0.18)',
+                              color: '#FFD66B',
+                              border: '1px solid rgba(255, 214, 107, 0.45)',
+                              '& .MuiChip-icon': { color: '#FFD66B' },
+                            }}
+                          />
+                        )}
+                      </Stack>
                       <Typography variant="body2" color="text.secondary">
                         {new Date(comment.created_at).toLocaleDateString('uk-UA')}
                       </Typography>
@@ -369,7 +397,7 @@ function GamePage({ game, userId, userName, isFavorite, onBack, onToggleFavorite
                     <Typography color="text.secondary" sx={{ lineHeight: 1.6, mt: 0.5 }}>
                       {comment.text}
                     </Typography>
-                    {comment.user_id === userId && (
+                    {(comment.user_id === userId || userRole === 'admin') && (
                       <Button
                         color="error"
                         size="small"

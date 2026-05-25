@@ -1,22 +1,73 @@
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import PersonIcon from '@mui/icons-material/Person'
-import { Avatar, Box, Container, Paper, Stack, Typography } from '@mui/material'
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
+import { Alert, Avatar, Box, Button, Container, Paper, Stack, Typography } from '@mui/material'
+import { useState } from 'react'
 import GameCard from '../components/GameCard'
 import type { Game } from '../data/games'
+import { supabase } from '../services/supabaseClient'
 
 type ProfilePageProps = {
+  userId: string | null
   userName: string
+  avatarUrl: string | null
   favoriteGames: Game[]
   onOpenGame: (game: Game) => void
   onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
+  onAvatarUpdate: (avatarUrl: string | null) => boolean | Promise<boolean>
 }
 
-function ProfilePage({ userName, favoriteGames, onOpenGame, onToggleFavorite }: ProfilePageProps) {
+function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, onToggleFavorite, onAvatarUpdate }: ProfilePageProps) {
+  const [message, setMessage] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+
+  const uploadAvatar = async (file: File) => {
+    if (!userId) {
+      setMessage('Щоб змінити аватарку, спочатку увійди в акаунт.')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setMessage('Обери файл зображення.')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage('Зображення має бути до 2 MB.')
+      return
+    }
+
+    setIsUploading(true)
+    setMessage('')
+
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? 'png'
+    const filePath = `${userId}/avatar-${Date.now()}.${extension}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      })
+
+    if (uploadError) {
+      setIsUploading(false)
+      setMessage(`Не вдалося завантажити аватарку: ${uploadError.message}`)
+      return
+    }
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+    const nextAvatarUrl = data.publicUrl
+    const isSaved = await onAvatarUpdate(nextAvatarUrl)
+
+    setIsUploading(false)
+    setMessage(isSaved ? 'Аватарку оновлено.' : 'Не вдалося оновити аватарку.')
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ alignItems: { sm: 'center' } }}>
-          <Avatar sx={{ width: 72, height: 72, bgcolor: 'primary.main' }}>
+          <Avatar src={avatarUrl ?? undefined} sx={{ width: 72, height: 72, bgcolor: 'primary.main' }}>
             <PersonIcon fontSize="large" />
           </Avatar>
 
@@ -28,10 +79,48 @@ function ProfilePage({ userName, favoriteGames, onOpenGame, onToggleFavorite }: 
               {userName}
             </Typography>
             <Typography color="text.secondary">
-              Тут користувач може переглядати обрані ігри. Пізніше сюди можна додати історію оцінок і коментарів.
+              Тут користувач може переглядати обрані ігри та налаштовувати аватарку профілю.
             </Typography>
           </Box>
         </Stack>
+      </Paper>
+
+      <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
+        <Typography variant="h2" sx={{ mb: 2 }}>Аватарка профілю</Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
+          <Avatar src={avatarUrl ?? undefined} sx={{ width: 88, height: 88, bgcolor: 'primary.main' }}>
+            <PersonIcon fontSize="large" />
+          </Avatar>
+          <Button
+            component="label"
+            variant="contained"
+            startIcon={<PhotoCameraIcon />}
+            disabled={isUploading}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            {isUploading ? 'Завантаження...' : 'Обрати з комп’ютера'}
+            <Box
+              component="input"
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+
+                if (file) {
+                  void uploadAvatar(file)
+                }
+
+                event.target.value = ''
+              }}
+            />
+          </Button>
+        </Stack>
+        {message && (
+          <Alert severity="info" sx={{ mt: 2 }} onClose={() => setMessage('')}>
+            {message}
+          </Alert>
+        )}
       </Paper>
 
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>

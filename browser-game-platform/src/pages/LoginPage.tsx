@@ -19,14 +19,10 @@ import { supabase } from '../services/supabaseClient'
 type LoginMode = 'user' | 'admin'
 
 type LoginPageProps = {
-  onLogin: () => void
-  onAdminLogin: () => void
+  onLogin: (mode: LoginMode) => Promise<boolean | string>
 }
 
-const adminEmail = 'admin@gamletland.local'
-const adminPassword = 'admin2026'
-
-function LoginPage({ onLogin, onAdminLogin }: LoginPageProps) {
+function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode] = useState<LoginMode>('user')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -39,16 +35,6 @@ function LoginPage({ onLogin, onAdminLogin }: LoginPageProps) {
 
     if (!email.trim() || password.length < 6) {
       setMessage('Введи email та пароль мінімум з 6 символів.')
-      return
-    }
-
-    if (mode === 'admin') {
-      if (email === adminEmail && password === adminPassword) {
-        onAdminLogin()
-        return
-      }
-
-      setMessage('Неправильний логін або пароль адміністратора.')
       return
     }
 
@@ -66,7 +52,11 @@ function LoginPage({ onLogin, onAdminLogin }: LoginPageProps) {
       return
     }
 
-    onLogin()
+    const loginResult = await onLogin(mode)
+
+    if (loginResult !== true) {
+      setMessage(typeof loginResult === 'string' ? loginResult : 'Не вдалося увійти.')
+    }
   }
 
   return (
@@ -80,7 +70,7 @@ function LoginPage({ onLogin, onAdminLogin }: LoginPageProps) {
             Увійти
           </Typography>
           <Typography color="text.secondary">
-            Користувач входить через Supabase Auth, а адміністратор поки має окремий демо-вхід.
+            Обери тип входу: звичайний користувач не потрапляє в адмінку, а адмін входить тільки через режим адміністратора.
           </Typography>
         </Box>
 
@@ -107,7 +97,7 @@ function LoginPage({ onLogin, onAdminLogin }: LoginPageProps) {
 
         {mode === 'admin' && (
           <Alert severity="info" sx={{ mb: 3 }}>
-            Демо-адмін: admin@gamletland.local / admin2026
+            Для входу в адмінку акаунт має мати роль admin у таблиці profiles.
           </Alert>
         )}
 
