@@ -22,17 +22,18 @@ type HomePageProps = {
 function HomePage({ games, genres, favoriteIds, onOpenGame, onToggleFavorite }: HomePageProps) {
   const [searchText, setSearchText] = useState('')
   const [selectedGenre, setSelectedGenre] = useState('Усі')
+  const activeGenre = selectedGenre === 'Усі' || genres.includes(selectedGenre) ? selectedGenre : 'Усі'
 
   const filteredGames = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
 
     return games.filter((game) => {
-      const fitsGenre = selectedGenre === 'Усі' || game.genre === selectedGenre
+      const fitsGenre = activeGenre === 'Усі' || game.genre === activeGenre
       const fitsSearch = game.title.toLowerCase().includes(normalizedSearch)
 
       return fitsGenre && fitsSearch
     })
-  }, [games, searchText, selectedGenre])
+  }, [activeGenre, games, searchText])
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
@@ -108,7 +109,7 @@ function HomePage({ games, genres, favoriteIds, onOpenGame, onToggleFavorite }: 
             {['Усі', ...genres].map((genre) => (
               <Button
                 key={genre}
-                variant={selectedGenre === genre ? 'contained' : 'outlined'}
+                variant={activeGenre === genre ? 'contained' : 'outlined'}
                 onClick={() => setSelectedGenre(genre)}
               >
                 {genre}

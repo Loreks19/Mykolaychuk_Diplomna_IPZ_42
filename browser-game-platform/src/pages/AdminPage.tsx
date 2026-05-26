@@ -18,7 +18,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import JSZip from 'jszip'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Game } from '../data/games'
 import { supabase } from '../services/supabaseClient'
@@ -245,6 +244,14 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
     setMessage('')
   }
 
+  useEffect(() => {
+    return () => {
+      if (coverPreviewUrl) {
+        URL.revokeObjectURL(coverPreviewUrl)
+      }
+    }
+  }, [coverPreviewUrl])
+
   const startCreate = () => {
     clearForm()
     setActiveTab('games')
@@ -271,6 +278,7 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   }
 
   const uploadGameArchive = async (gameId: number, title: string, file: File) => {
+    const { default: JSZip } = await import('jszip')
     const zip = await JSZip.loadAsync(file)
     const entries = Object.values(zip.files).filter((entry) => {
       const path = cleanZipPath(entry.name)
@@ -328,15 +336,21 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
     }
 
     const rating = Number(form.rating)
+    const slug = createSlug(form.title)
 
     if (Number.isNaN(rating) || rating < 0 || rating > 5) {
       setMessage('Рейтинг має бути числом від 0 до 5.')
       return
     }
 
+    if (!slug) {
+      setMessage('Назва гри має містити хоча б одну літеру або цифру для створення адреси гри.')
+      return
+    }
+
     const gamePayload = {
       title: form.title.trim(),
-      slug: createSlug(form.title),
+      slug,
       genre_id: Number(form.genreId),
       description: form.description.trim(),
       players: form.players.trim() || '1 гравець',

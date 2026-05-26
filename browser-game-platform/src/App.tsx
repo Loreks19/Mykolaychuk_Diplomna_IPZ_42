@@ -87,8 +87,8 @@ function App() {
 
   const loadCatalog = async () => {
     const [
-      { data: genreData },
-      { data: gameData },
+      { data: genreData, error: genreError },
+      { data: gameData, error: gameError },
     ] = await Promise.all([
       supabase
         .from('genres')
@@ -100,39 +100,43 @@ function App() {
         .order('id', { ascending: true }),
     ])
 
+    if (genreError || gameError) {
+      console.error('Catalog load error:', genreError?.message ?? gameError?.message)
+      return
+    }
+
     const nextGenres = (genreData ?? []) as GenreRow[]
     const nextGames = (gameData ?? []) as GameRow[]
     const genreById = new Map(nextGenres.map((genre) => [genre.id, genre.name]))
 
-    if (nextGenres.length > 0) {
-      setGenres(nextGenres.map((genre) => genre.name))
-    }
+    setGenres(nextGenres.map((genre) => genre.name))
 
-    if (nextGames.length > 0) {
-      const mappedGames = nextGames.map((game) => ({
-        id: game.id,
-        title: game.title,
-        slug: game.slug,
-        genre: (game.genre_id ? genreById.get(game.genre_id) : undefined) ?? 'Без жанру',
-        description: game.description,
-        players: game.players,
-        difficulty: game.difficulty,
-        coverImage: game.cover_image,
-        rating: game.rating,
-        playUrl: game.play_url ?? undefined,
-      }))
+    const mappedGames = nextGames.map((game) => ({
+      id: game.id,
+      title: game.title,
+      slug: game.slug,
+      genre: (game.genre_id ? genreById.get(game.genre_id) : undefined) ?? 'Без жанру',
+      description: game.description,
+      players: game.players,
+      difficulty: game.difficulty,
+      coverImage: game.cover_image,
+      rating: game.rating,
+      playUrl: game.play_url ?? undefined,
+    }))
 
-      setGames(mappedGames)
+    setGames(mappedGames)
 
-      const hashedGameSlug = gameSlugFromHash(window.location.hash)
+    const hashedGameSlug = gameSlugFromHash(window.location.hash)
 
-      if (hashedGameSlug) {
-        const hashedGame = mappedGames.find((game) => game.slug === hashedGameSlug)
+    if (hashedGameSlug) {
+      const hashedGame = mappedGames.find((game) => game.slug === hashedGameSlug)
 
-        if (hashedGame) {
-          setSelectedGame(hashedGame)
-          setActivePage('game')
-        }
+      if (hashedGame) {
+        setSelectedGame(hashedGame)
+        setActivePage('game')
+      } else {
+        setSelectedGame(null)
+        setActivePage('home')
       }
     }
   }

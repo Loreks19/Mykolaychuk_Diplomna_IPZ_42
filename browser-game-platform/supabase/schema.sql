@@ -117,25 +117,16 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  selected_role text;
 begin
-  selected_role := coalesce(new.raw_user_meta_data->>'role', 'user');
-
-  if selected_role not in ('user', 'admin') then
-    selected_role := 'user';
-  end if;
-
   insert into public.profiles (id, full_name, role)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', 'Користувач'),
-    selected_role
+    'user'
   )
   on conflict (id) do update
   set
-    full_name = excluded.full_name,
-    role = excluded.role;
+    full_name = excluded.full_name;
 
   return new;
 end;
