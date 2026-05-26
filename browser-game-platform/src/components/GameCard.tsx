@@ -59,6 +59,7 @@ function GameCard({ game, isFavorite = false, onOpen, onToggleFavorite }: GameCa
         <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
           <Chip label={game.genre} color="primary" size="small" />
           <Chip label={game.difficulty} variant="outlined" size="small" />
+          {!game.playUrl && <Chip label="Без запуску" color="warning" variant="outlined" size="small" />}
         </Stack>
 
         <Typography component="h3" variant="h3" sx={{ mb: 1 }}>
@@ -82,8 +83,8 @@ function GameCard({ game, isFavorite = false, onOpen, onToggleFavorite }: GameCa
           {game.players}
         </Typography>
 
-        <Button variant="contained" endIcon={<PlayArrowIcon />} onClick={() => onOpen(game)}>
-          Відкрити
+        <Button variant={game.playUrl ? 'contained' : 'outlined'} endIcon={<PlayArrowIcon />} onClick={() => onOpen(game)}>
+          {game.playUrl ? 'Відкрити' : 'Деталі'}
         </Button>
       </CardActions>
     </Card>

@@ -19,7 +19,7 @@ revoke execute on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
 
 grant insert, update, delete on public.genres to authenticated;
-grant insert, update on public.games to authenticated;
+grant insert, update, delete on public.games to authenticated;
 grant delete on public.comments to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
 
@@ -55,6 +55,7 @@ drop policy if exists "Admins can create genres" on public.genres;
 drop policy if exists "Admins can delete genres" on public.genres;
 drop policy if exists "Admins can create games" on public.games;
 drop policy if exists "Admins can update games" on public.games;
+drop policy if exists "Admins can delete games" on public.games;
 drop policy if exists "Admins can delete any comment" on public.comments;
 drop policy if exists "Admins can read all profiles" on public.profiles;
 drop policy if exists "Anyone can read game covers" on storage.objects;
@@ -100,6 +101,18 @@ using (
   )
 )
 with check (
+  exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and role = 'admin'
+  )
+);
+
+create policy "Admins can delete games"
+on public.games for delete
+to authenticated
+using (
   exists (
     select 1
     from public.profiles

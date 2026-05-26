@@ -60,6 +60,8 @@ const emptyForm: AdminGameForm = {
   playUrl: '',
 }
 
+const gameAdminPanelHeight = { lg: 740 }
+
 const createSlug = (title: string) =>
   title
     .trim()
@@ -330,8 +332,8 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
       return
     }
 
-    if (!editingId && !form.coverImage.trim() && !coverFile) {
-      setMessage('Для нової гри додай заставку з ПК або вкажи шлях до зображення.')
+    if (!editingId && !coverFile) {
+      setMessage('Для нової гри додай заставку з ПК.')
       return
     }
 
@@ -540,6 +542,29 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
     await onCatalogChange()
   }
 
+  const deleteGame = async (game: EditableGame) => {
+    const isConfirmed = window.confirm(`Видалити гру "${game.title}"? Коментарі, оцінки та обране для цієї гри також буде видалено.`)
+
+    if (!isConfirmed) {
+      return
+    }
+
+    const { error } = await supabase.from('games').delete().eq('id', game.id)
+
+    if (error) {
+      setMessage(`Не вдалося видалити гру: ${error.message}`)
+      return
+    }
+
+    if (editingId === game.id) {
+      clearForm()
+    }
+
+    setMessage('Гру видалено.')
+    await loadAdminData()
+    await onCatalogChange()
+  }
+
   if (userRole !== 'admin') {
     return (
       <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
@@ -585,13 +610,47 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
       )}
 
       {activeTab === 'games' && (
-        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} sx={{ alignItems: 'flex-start' }}>
-          <Paper sx={{ width: { xs: '100%', lg: 420 }, p: 3, border: '1px solid', borderColor: 'divider' }}>
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} sx={{ alignItems: 'stretch' }}>
+          <Paper
+            sx={{
+              width: { xs: '100%', lg: 400 },
+              height: gameAdminPanelHeight,
+              p: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+            }}
+          >
             <Typography variant="h2" sx={{ mb: 2 }}>
               {editingId ? 'Редагувати гру' : 'Додати гру'}
             </Typography>
 
-            <Stack spacing={2}>
+            <Stack
+              spacing={2}
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                pr: { lg: 1 },
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(103, 179, 250, 0.75) rgba(255, 255, 255, 0.08)',
+                '&::-webkit-scrollbar': { width: 10 },
+                '&::-webkit-scrollbar-track': {
+                  bgcolor: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: 999,
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  bgcolor: 'rgba(103, 179, 250, 0.75)',
+                  borderRadius: 999,
+                  border: '2px solid rgba(255, 255, 255, 0.08)',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  bgcolor: 'primary.light',
+                },
+              }}
+            >
               <TextField label="Назва гри" value={form.title} onChange={(event) => updateField('title', event.target.value)} fullWidth />
               <TextField select label="Жанр" value={form.genreId} onChange={(event) => updateField('genreId', event.target.value)} fullWidth>
                 {genreList.map((genre) => (
@@ -603,12 +662,14 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
               <TextField label="Складність" value={form.difficulty} onChange={(event) => updateField('difficulty', event.target.value)} fullWidth />
               <TextField label="Рейтинг" value={form.rating} onChange={(event) => updateField('rating', event.target.value)} fullWidth />
               <Stack spacing={1}>
-                <TextField label="Зображення" value={form.coverImage} onChange={(event) => updateField('coverImage', event.target.value)} placeholder="/games_images/shooter.png" fullWidth />
                 <Button
                   component="label"
                   variant="outlined"
                   startIcon={<PhotoCameraIcon />}
                   disabled={isCoverUploading}
+                  size="large"
+                  fullWidth
+                  sx={{ minHeight: 40 }}
                 >
                   {coverFile ? coverFile.name : 'Обрати заставку з ПК'}
                   <Box
@@ -645,19 +706,14 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
                 )}
               </Stack>
               <Stack spacing={1}>
-                <TextField
-                  label="Запуск гри"
-                  value={form.playUrl}
-                  onChange={(event) => updateField('playUrl', event.target.value)}
-                  placeholder="/games/my-game/index.html або автоматично після ZIP"
-                  helperText="Для стабільного запуску HTML5-гри поклади її папку в public/games і вкажи шлях /games/назва/index.html."
-                  fullWidth
-                />
                 <Button
                   component="label"
                   variant="outlined"
                   startIcon={<UploadFileIcon />}
                   disabled={isGameUploading}
+                  size="large"
+                  fullWidth
+                  sx={{ minHeight: 46 }}
                 >
                   {gameZipFile ? gameZipFile.name : 'Обрати ZIP гри з ПК'}
                   <Box
@@ -685,21 +741,61 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
                 </Button>
               </Stack>
 
-              <Stack direction="row" spacing={1}>
-                <Button variant="contained" startIcon={<SaveIcon />} onClick={saveGame}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button variant="contained" size="large" startIcon={<SaveIcon />} onClick={saveGame} sx={{ flex: 1 }}>
                   {isCoverUploading || isGameUploading ? 'Збереження...' : editingId ? 'Зберегти' : 'Додати гру'}
                 </Button>
-                <Button variant="outlined" onClick={clearForm}>Очистити</Button>
+                <Button variant="outlined" size="large" onClick={clearForm} sx={{ flex: 1 }}>Очистити</Button>
               </Stack>
             </Stack>
           </Paper>
 
-          <Paper sx={{ flex: 1, width: '100%', p: 3, border: '1px solid', borderColor: 'divider' }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', mb: 2 }}>
+          <Paper
+            sx={{
+              flex: 1,
+              width: '100%',
+              height: gameAdminPanelHeight,
+              p: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: 0,
+            }}
+          >
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, mb: 2, flexShrink: 0 }}
+            >
               <Typography variant="h2">Список ігор</Typography>
               <Button variant="contained" onClick={startCreate}>Додати нову гру</Button>
             </Stack>
-            <Stack spacing={2}>
+            <Stack
+              spacing={2}
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                pr: { lg: 1 },
+                overflowY: 'auto',
+                overscrollBehavior: 'contain',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(103, 179, 250, 0.75) rgba(255, 255, 255, 0.08)',
+                '&::-webkit-scrollbar': { width: 10 },
+                '&::-webkit-scrollbar-track': {
+                  bgcolor: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: 999,
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  bgcolor: 'rgba(103, 179, 250, 0.75)',
+                  borderRadius: 999,
+                  border: '2px solid rgba(255, 255, 255, 0.08)',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                  bgcolor: 'primary.light',
+                },
+              }}
+            >
               {gameList.map((game) => (
                 <Box key={game.id}>
                   <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ alignItems: { md: 'center' } }}>
@@ -709,13 +805,19 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
                         <Chip label={game.genre} color="primary" size="small" />
                         <Chip label={game.difficulty} variant="outlined" size="small" />
                         <Chip label={game.rating.toFixed(1)} variant="outlined" size="small" />
+                        {!game.playUrl && <Chip label="Без запуску" color="warning" variant="outlined" size="small" />}
                       </Stack>
                       <Typography variant="h3">{game.title}</Typography>
                       <Typography color="text.secondary">{game.description}</Typography>
                     </Box>
-                    <Button variant="outlined" startIcon={<EditIcon />} onClick={() => startEdit(game)}>
-                      Редагувати
-                    </Button>
+                    <Stack direction={{ xs: 'row', md: 'column' }} spacing={1} sx={{ alignItems: 'stretch' }}>
+                      <Button variant="outlined" startIcon={<EditIcon />} onClick={() => startEdit(game)}>
+                        Редагувати
+                      </Button>
+                      <Button color="error" variant="outlined" startIcon={<DeleteIcon />} onClick={() => deleteGame(game)}>
+                        Видалити
+                      </Button>
+                    </Stack>
                   </Stack>
                   <Divider sx={{ mt: 2 }} />
                 </Box>

@@ -20,6 +20,7 @@ type ProfilePageProps = {
 function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, onToggleFavorite, onAvatarUpdate }: ProfilePageProps) {
   const [message, setMessage] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const playableFavoriteCount = favoriteGames.filter((game) => Boolean(game.playUrl)).length
 
   const uploadAvatar = async (file: File) => {
     if (!userId) {
@@ -130,12 +131,12 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, o
             <Typography color="text.secondary">обрані ігри</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">Supabase</Typography>
-            <Typography color="text.secondary">дані зберігаються в базі</Typography>
+            <Typography variant="h2">{playableFavoriteCount}</Typography>
+            <Typography color="text.secondary">можна запустити</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">Frontend</Typography>
-            <Typography color="text.secondary">кабінет без зайвої складності</Typography>
+            <Typography variant="h2">{avatarUrl ? 'Так' : 'Ні'}</Typography>
+            <Typography color="text.secondary">аватарка додана</Typography>
           </Box>
         </Stack>
       </Paper>
