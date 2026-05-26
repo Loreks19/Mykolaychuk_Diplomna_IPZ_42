@@ -11,6 +11,15 @@ type R2Bucket = {
       }
     },
   ) => Promise<unknown>
+  list: (options?: {
+    prefix?: string
+    cursor?: string
+  }) => Promise<{
+    objects: Array<{ key: string }>
+    truncated: boolean
+    cursor?: string
+  }>
+  delete: (keys: string | string[]) => Promise<void>
 }
 
 type Env = {
@@ -31,7 +40,7 @@ const ALLOWED_ORIGIN = '*'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
 }
 
@@ -111,6 +120,99 @@ const getContentType = (fileName: string): string => {
   }
 }
 
+const audioBridgeScript = String.raw`
+<script>
+(() => {
+  if (window.__gamletlandAudioBridge) return;
+  window.__gamletlandAudioBridge = true;
+
+  let volume = 1;
+  let muted = false;
+  const contextGains = [];
+  const destinationGains = new WeakMap();
+
+  const applyMediaVolume = () => {
+    document.querySelectorAll('audio, video').forEach((element) => {
+      element.volume = muted ? 0 : volume;
+      element.muted = muted;
+    });
+  };
+
+  const applyContextVolume = () => {
+    contextGains.forEach((gain) => {
+      gain.gain.value = muted ? 0 : volume;
+    });
+  };
+
+  const applyVolume = () => {
+    applyMediaVolume();
+    applyContextVolume();
+  };
+
+  const originalAudio = window.Audio;
+  window.Audio = function (...args) {
+    const audio = new originalAudio(...args);
+    window.setTimeout(applyMediaVolume, 0);
+    return audio;
+  };
+  window.Audio.prototype = originalAudio.prototype;
+
+  if (window.AudioNode && !window.AudioNode.prototype.__gamletlandConnectPatched) {
+    const originalConnect = window.AudioNode.prototype.connect;
+    window.AudioNode.prototype.connect = function (destination, ...args) {
+      const masterGain = destinationGains.get(destination);
+      return originalConnect.call(this, masterGain || destination, ...args);
+    };
+    window.AudioNode.prototype.__gamletlandConnectPatched = true;
+  }
+
+  const patchAudioContext = (name) => {
+    const OriginalContext = window[name];
+    if (!OriginalContext) return;
+
+    window[name] = function (...args) {
+      const context = new OriginalContext(...args);
+      const gain = context.createGain();
+      gain.connect(context.destination);
+      contextGains.push(gain);
+      destinationGains.set(context.destination, gain);
+      applyContextVolume();
+      return context;
+    };
+    window[name].prototype = OriginalContext.prototype;
+  };
+
+  patchAudioContext('AudioContext');
+  patchAudioContext('webkitAudioContext');
+
+  new MutationObserver(applyMediaVolume).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
+  window.addEventListener('message', (event) => {
+    if (!event.data || event.data.type !== 'GAMLETLAND_AUDIO') return;
+    volume = Math.max(0, Math.min(1, Number(event.data.volume ?? volume)));
+    muted = Boolean(event.data.muted);
+    applyVolume();
+  });
+
+  applyVolume();
+})();
+</script>`
+
+const injectAudioBridge = (html: string) => {
+  if (html.includes('__gamletlandAudioBridge')) {
+    return html
+  }
+
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${audioBridgeScript}`)
+  }
+
+  return `${audioBridgeScript}\n${html}`
+}
+
 const verifyAdmin = async (request: Request, env: Env) => {
   const authorization = request.headers.get('Authorization')
 
@@ -159,13 +261,40 @@ const verifyAdmin = async (request: Request, env: Env) => {
   return { ok: true, status: 200, message: 'OK' }
 }
 
+const deleteGameFiles = async (request: Request, env: Env) => {
+  const url = new URL(request.url)
+  const slug = createSlug(url.searchParams.get('slug') ?? '')
+
+  if (!slug) {
+    return json({ error: 'Game slug is required.' }, 400)
+  }
+
+  const prefix = `games/${slug}/`
+  let cursor: string | undefined
+  let deletedCount = 0
+
+  do {
+    const listed = await env.GAME_BUCKET.list({ prefix, cursor })
+    const keys = listed.objects.map((object) => object.key)
+
+    if (keys.length > 0) {
+      await env.GAME_BUCKET.delete(keys)
+      deletedCount += keys.length
+    }
+
+    cursor = listed.truncated ? listed.cursor : undefined
+  } while (cursor)
+
+  return json({ deleted_count: deletedCount })
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders })
     }
 
-    if (request.method !== 'POST') {
+    if (request.method !== 'POST' && request.method !== 'DELETE') {
       return json({ error: 'Method not allowed.' }, 405)
     }
 
@@ -173,6 +302,10 @@ export default {
 
     if (!adminCheck.ok) {
       return json({ error: adminCheck.message }, adminCheck.status)
+    }
+
+    if (request.method === 'DELETE') {
+      return deleteGameFiles(request, env)
     }
 
     const contentLength = Number(request.headers.get('Content-Length') ?? 0)
@@ -235,7 +368,11 @@ export default {
         continue
       }
 
-      await env.GAME_BUCKET.put(`${uploadRoot}/${relativePath}`, bytes, {
+      const uploadBytes = relativePath.toLowerCase() === 'index.html'
+        ? new TextEncoder().encode(injectAudioBridge(new TextDecoder().decode(bytes)))
+        : bytes
+
+      await env.GAME_BUCKET.put(`${uploadRoot}/${relativePath}`, uploadBytes, {
         httpMetadata: {
           contentType: getContentType(relativePath),
           cacheControl: 'public, max-age=31536000',

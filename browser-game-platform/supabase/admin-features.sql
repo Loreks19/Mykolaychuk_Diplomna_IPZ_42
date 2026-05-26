@@ -37,20 +37,6 @@ set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'game-files',
-  'game-files',
-  true,
-  52428800,
-  null
-)
-on conflict (id) do update
-set
-  public = excluded.public,
-  file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
-
 drop policy if exists "Admins can create genres" on public.genres;
 drop policy if exists "Admins can delete genres" on public.genres;
 drop policy if exists "Admins can create games" on public.games;
@@ -161,39 +147,6 @@ on storage.objects for delete
 to authenticated
 using (
   bucket_id = 'game-covers'
-  and public.is_admin()
-);
-
-create policy "Anyone can read game files"
-on storage.objects for select
-to anon, authenticated
-using (bucket_id = 'game-files');
-
-create policy "Admins can upload game files"
-on storage.objects for insert
-to authenticated
-with check (
-  bucket_id = 'game-files'
-  and public.is_admin()
-);
-
-create policy "Admins can update game files"
-on storage.objects for update
-to authenticated
-using (
-  bucket_id = 'game-files'
-  and public.is_admin()
-)
-with check (
-  bucket_id = 'game-files'
-  and public.is_admin()
-);
-
-create policy "Admins can delete game files"
-on storage.objects for delete
-to authenticated
-using (
-  bucket_id = 'game-files'
   and public.is_admin()
 );
 
