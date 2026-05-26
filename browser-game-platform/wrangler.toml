@@ -1,0 +1,12 @@
+name = "gamletland-game-upload"
+main = "cloudflare-worker/src/index.ts"
+compatibility_date = "2026-05-26"
+
+[vars]
+PUBLIC_GAMES_BASE_URL = "https://pub-6b8c61d1b3554c72aa0ff8bcf57d1284.r2.dev"
+SUPABASE_URL = "https://lvxqiftxcouesflvkuzx.supabase.co"
+SUPABASE_ANON_KEY = "sb_publishable_H2TpvFeGECTD0RcN-pFFsQ_Lg2t_vik"
+
+[[r2_buckets]]
+binding = "GAME_BUCKET"
+bucket_name = "gamletland-games"

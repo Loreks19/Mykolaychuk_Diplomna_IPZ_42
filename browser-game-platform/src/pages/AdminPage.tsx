@@ -49,6 +49,11 @@ type AdminPageProps = {
   onCatalogChange: () => void | Promise<void>
 }
 
+type GameUploadResponse = {
+  play_url?: string
+  error?: string
+}
+
 const emptyForm: AdminGameForm = {
   title: '',
   genreId: '',
@@ -69,56 +74,7 @@ const createSlug = (title: string) =>
     .replace(/[^a-z0-9а-яіїєґ\s-]/gi, '')
     .replace(/\s+/g, '-')
 
-const cleanZipPath = (path: string) =>
-  path
-    .replace(/\\/g, '/')
-    .replace(/^\/+/, '')
-    .split('/')
-    .filter((part) => part && part !== '.' && part !== '..')
-    .join('/')
-
-const getContentType = (fileName: string): string => {
-  const extension = fileName.split('.').pop()?.toLowerCase()
-
-  switch (extension) {
-    case 'html':
-      return 'text/html'
-    case 'js':
-      return 'application/javascript'
-    case 'css':
-      return 'text/css'
-    case 'json':
-      return 'application/json'
-    case 'png':
-      return 'image/png'
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg'
-    case 'webp':
-      return 'image/webp'
-    case 'gif':
-      return 'image/gif'
-    case 'svg':
-      return 'image/svg+xml'
-    case 'mp3':
-      return 'audio/mpeg'
-    case 'ogg':
-      return 'audio/ogg'
-    case 'wav':
-      return 'audio/wav'
-    case 'mp4':
-      return 'video/mp4'
-    case 'wasm':
-      return 'application/wasm'
-    default:
-      return 'application/octet-stream'
-  }
-}
-
-const createStorageFile = (blob: Blob, fileName: string) => {
-  const contentType = getContentType(fileName)
-  return new File([blob], fileName.split('/').pop() ?? 'game-file', { type: contentType })
-}
+const gameUploadWorkerUrl = import.meta.env.VITE_GAME_UPLOAD_WORKER_URL as string | undefined
 
 function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('games')
@@ -280,50 +236,39 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   }
 
   const uploadGameArchive = async (gameId: number, title: string, file: File) => {
-    const { default: JSZip } = await import('jszip')
-    const zip = await JSZip.loadAsync(file)
-    const entries = Object.values(zip.files).filter((entry) => {
-      const path = cleanZipPath(entry.name)
-      return !entry.dir && path && !path.startsWith('__MACOSX/') && !path.endsWith('.DS_Store')
+    if (!gameUploadWorkerUrl) {
+      throw new Error('VITE_GAME_UPLOAD_WORKER_URL is missing in .env.')
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+
+    if (sessionError || !accessToken) {
+      throw new Error(sessionError?.message ?? 'Admin session was not found.')
+    }
+
+    const formData = new FormData()
+    formData.append('slug', createSlug(title) || `game-${gameId}`)
+    formData.append('file', file)
+
+    const response = await fetch(gameUploadWorkerUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: formData,
     })
-    const indexEntry = entries.find((entry) => cleanZipPath(entry.name).toLowerCase().endsWith('/index.html'))
-      ?? entries.find((entry) => cleanZipPath(entry.name).toLowerCase() === 'index.html')
+    const responseBody = await response.json().catch(() => ({} as GameUploadResponse)) as GameUploadResponse
 
-    if (!indexEntry) {
-      throw new Error('В архіві не знайдено index.html.')
+    if (!response.ok) {
+      throw new Error(responseBody.error ?? `Worker upload failed with status ${response.status}.`)
     }
 
-    const rootPrefix = cleanZipPath(indexEntry.name).replace(/index\.html$/i, '')
-    const slug = createSlug(title) || `game-${gameId}`
-    const uploadRoot = `${gameId}/${slug}-${Date.now()}`
-
-    for (const entry of entries) {
-      const originalPath = cleanZipPath(entry.name)
-      const relativePath = rootPrefix && originalPath.startsWith(rootPrefix)
-        ? originalPath.slice(rootPrefix.length)
-        : originalPath
-
-      if (!relativePath) {
-        continue
-      }
-
-      const blob = await entry.async('blob')
-      const storageFile = createStorageFile(blob, relativePath)
-      const { error } = await supabase.storage
-        .from('game-files')
-        .upload(`${uploadRoot}/${relativePath}`, storageFile, {
-          cacheControl: '3600',
-          contentType: getContentType(relativePath),
-          upsert: true,
-        })
-
-      if (error) {
-        throw new Error(`${relativePath}: ${error.message}`)
-      }
+    if (!responseBody.play_url) {
+      throw new Error('Worker did not return play_url.')
     }
 
-    const { data } = supabase.storage.from('game-files').getPublicUrl(`${uploadRoot}/index.html`)
-    return data.publicUrl
+    return responseBody.play_url
   }
 
   const saveGame = async () => {
