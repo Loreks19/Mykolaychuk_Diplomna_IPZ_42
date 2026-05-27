@@ -498,7 +498,7 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
             Твоя оцінка
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Оцінка зберігається в Supabase. Якщо поставити нову оцінку, стара просто оновиться.
+            Поділись враженням від гри: твоя оцінка допоможе іншим швидше знайти найцікавіші проєкти.
           </Typography>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
@@ -514,7 +514,7 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
             Коментарі
           </Typography>
           <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Коментарі зберігаються у таблиці comments і залишаються під конкретною грою.
+            Розкажи, що сподобалось, поділись порадою або залиш перше враження після проходження.
           </Typography>
 
           {message && (

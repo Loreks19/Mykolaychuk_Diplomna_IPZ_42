@@ -1,8 +1,23 @@
 import FavoriteIcon from '@mui/icons-material/Favorite'
+import EditIcon from '@mui/icons-material/Edit'
 import PersonIcon from '@mui/icons-material/Person'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
-import { Alert, Avatar, Box, Button, Container, Paper, Stack, Typography } from '@mui/material'
-import { useState } from 'react'
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useEffect, useState } from 'react'
 import GameCard from '../components/GameCard'
 import type { Game } from '../data/games'
 import { supabase } from '../services/supabaseClient'
@@ -12,15 +27,57 @@ type ProfilePageProps = {
   userName: string
   avatarUrl: string | null
   favoriteGames: Game[]
+  isFavoritesLoading: boolean
   onOpenGame: (game: Game) => void
   onToggleFavorite: (gameId: number) => boolean | Promise<boolean>
   onAvatarUpdate: (avatarUrl: string | null) => boolean | Promise<boolean>
+  onNameUpdate: (name: string) => boolean | Promise<boolean>
 }
 
-function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, onToggleFavorite, onAvatarUpdate }: ProfilePageProps) {
+function ProfilePage({ userId, userName, avatarUrl, favoriteGames, isFavoritesLoading, onOpenGame, onToggleFavorite, onAvatarUpdate, onNameUpdate }: ProfilePageProps) {
   const [message, setMessage] = useState('')
   const [isUploading, setIsUploading] = useState(false)
-  const playableFavoriteCount = favoriteGames.filter((game) => Boolean(game.playUrl)).length
+  const [isNameDialogOpen, setIsNameDialogOpen] = useState(false)
+  const [nextUserName, setNextUserName] = useState(userName)
+  const [isNameSaving, setIsNameSaving] = useState(false)
+  const [commentCount, setCommentCount] = useState<number | null>(null)
+  const [ratedGameCount, setRatedGameCount] = useState<number | null>(null)
+
+  useEffect(() => {
+    setNextUserName(userName)
+  }, [userName])
+
+  useEffect(() => {
+    const loadProfileStats = async () => {
+      if (!userId) {
+        setCommentCount(null)
+        setRatedGameCount(null)
+        return
+      }
+
+      setCommentCount(null)
+      setRatedGameCount(null)
+
+      const [
+        { count: nextCommentCount },
+        { count: nextRatedGameCount },
+      ] = await Promise.all([
+        supabase
+          .from('comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+        supabase
+          .from('ratings')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId),
+      ])
+
+      setCommentCount(nextCommentCount ?? 0)
+      setRatedGameCount(nextRatedGameCount ?? 0)
+    }
+
+    void loadProfileStats()
+  }, [userId])
 
   const uploadAvatar = async (file: File) => {
     if (!userId) {
@@ -64,18 +121,36 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, o
     setMessage(isSaved ? 'Аватарку оновлено.' : 'Не вдалося оновити аватарку.')
   }
 
+  const saveUserName = async () => {
+    const trimmedName = nextUserName.trim()
+
+    if (!trimmedName) {
+      setMessage('Ім’я не може бути порожнім.')
+      return
+    }
+
+    setIsNameSaving(true)
+    const isSaved = await onNameUpdate(trimmedName)
+    setIsNameSaving(false)
+
+    if (!isSaved) {
+      setMessage('Не вдалося оновити ім’я.')
+      return
+    }
+
+    setIsNameDialogOpen(false)
+    setMessage('Ім’я оновлено.')
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ alignItems: { sm: 'center' } }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} sx={{ alignItems: { md: 'center' } }}>
           <Avatar src={avatarUrl ?? undefined} sx={{ width: 72, height: 72, bgcolor: 'primary.main' }}>
             <PersonIcon fontSize="large" />
           </Avatar>
 
-          <Box>
-            <Typography color="primary.light" sx={{ mb: 1, fontWeight: 700 }}>
-              Особистий кабінет
-            </Typography>
+          <Box sx={{ flex: 1 }}>
             <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
               {userName}
             </Typography>
@@ -83,39 +158,42 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, o
               Тут користувач може переглядати обрані ігри та налаштовувати аватарку профілю.
             </Typography>
           </Box>
-        </Stack>
-      </Paper>
 
-      <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="h2" sx={{ mb: 2 }}>Аватарка профілю</Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
-          <Avatar src={avatarUrl ?? undefined} sx={{ width: 88, height: 88, bgcolor: 'primary.main' }}>
-            <PersonIcon fontSize="large" />
-          </Avatar>
-          <Button
-            component="label"
-            variant="contained"
-            startIcon={<PhotoCameraIcon />}
-            disabled={isUploading}
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            {isUploading ? 'Завантаження...' : 'Обрати з комп’ютера'}
-            <Box
-              component="input"
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0]
+          <Stack spacing={1.5} sx={{ width: { xs: '100%', md: 190 } }}>
+            <Button
+              component="label"
+              variant="contained"
+              startIcon={<PhotoCameraIcon />}
+              disabled={isUploading}
+              fullWidth
+            >
+              {isUploading ? 'Завантаження...' : 'Оновити аватар'}
+              <Box
+                component="input"
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
 
-                if (file) {
-                  void uploadAvatar(file)
-                }
+                  if (file) {
+                    void uploadAvatar(file)
+                  }
 
-                event.target.value = ''
-              }}
-            />
-          </Button>
+                  event.target.value = ''
+                }}
+              />
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={<EditIcon />}
+              onClick={() => setIsNameDialogOpen(true)}
+              fullWidth
+            >
+              Змінити ім’я
+            </Button>
+          </Stack>
         </Stack>
         {message && (
           <Alert severity="info" sx={{ mt: 2 }} onClose={() => setMessage('')}>
@@ -127,33 +205,66 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, onOpenGame, o
       <Paper sx={{ p: { xs: 3, md: 4 }, mb: 4, border: '1px solid', borderColor: 'divider' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">{favoriteGames.length}</Typography>
+            <Typography variant="h2">{isFavoritesLoading ? '...' : favoriteGames.length}</Typography>
             <Typography color="text.secondary">обрані ігри</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">{playableFavoriteCount}</Typography>
-            <Typography color="text.secondary">можна запустити</Typography>
+            <Typography variant="h2">{commentCount ?? '...'}</Typography>
+            <Typography color="text.secondary">коментарів залишено</Typography>
           </Box>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h2">{avatarUrl ? 'Так' : 'Ні'}</Typography>
-            <Typography color="text.secondary">аватарка додана</Typography>
+            <Typography variant="h2">{ratedGameCount ?? '...'}</Typography>
+            <Typography color="text.secondary">ігор оцінено</Typography>
           </Box>
         </Stack>
       </Paper>
 
+      <Dialog
+        open={isNameDialogOpen}
+        onClose={() => setIsNameDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Змінити ім’я</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Нове ім’я"
+            value={nextUserName}
+            onChange={(event) => setNextUserName(event.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setIsNameDialogOpen(false)}>
+            Скасувати
+          </Button>
+          <Button variant="contained" onClick={saveUserName} disabled={isNameSaving}>
+            {isNameSaving ? 'Збереження...' : 'Зберегти'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Box sx={{ mb: 2 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <FavoriteIcon color="primary" />
-          <Typography component="h2" variant="h2">
+          <Typography component="h2" variant="h2" sx={{ fontSize: { xs: '2rem', md: '2.35rem' } }}>
             Обрані ігри
           </Typography>
+          <FavoriteIcon color="primary" sx={{ fontSize: { xs: 26, md: 30 } }} />
         </Stack>
-        <Typography color="text.secondary">
+        <Typography color="text.secondary" sx={{ mt: 1 }}>
           Натисни серце на картці гри, щоб прибрати її з обраного.
         </Typography>
       </Box>
 
-      {favoriteGames.length > 0 ? (
+      {isFavoritesLoading ? (
+        <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
+          <Typography color="text.secondary">
+            Завантаження обраних ігор...
+          </Typography>
+        </Paper>
+      ) : favoriteGames.length > 0 ? (
         <Box
           sx={{
             display: 'grid',

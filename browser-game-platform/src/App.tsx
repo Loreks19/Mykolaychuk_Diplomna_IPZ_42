@@ -46,6 +46,7 @@ function App() {
   const [userName, setUserName] = useState('Гравець')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
+  const [isFavoritesLoading, setIsFavoritesLoading] = useState(false)
   const [games, setGames] = useState<Game[]>(fallbackGames)
   const [genres, setGenres] = useState<GameGenre[]>(fallbackGenres)
 
@@ -142,12 +143,15 @@ function App() {
   }
 
   const loadFavorites = async (currentUserId: string) => {
+    setIsFavoritesLoading(true)
+
     const { data } = await supabase
       .from('favorites')
       .select('game_id')
       .eq('user_id', currentUserId)
 
     setFavoriteIds((data ?? []).map((favorite) => favorite.game_id))
+    setIsFavoritesLoading(false)
   }
 
   useEffect(() => {
@@ -174,6 +178,7 @@ function App() {
         setUserName('Гравець')
         setAvatarUrl(null)
         setFavoriteIds([])
+        setIsFavoritesLoading(false)
       }
     })
 
@@ -249,6 +254,7 @@ function App() {
     setUserName('Гравець')
     setAvatarUrl(null)
     setFavoriteIds([])
+    setIsFavoritesLoading(false)
   }
 
   const login = async (mode: LoginMode = 'user') => {
@@ -303,6 +309,31 @@ function App() {
     return true
   }
 
+  const updateProfileName = async (nextUserName: string) => {
+    if (!userId) {
+      return false
+    }
+
+    const trimmedName = nextUserName.trim()
+
+    if (!trimmedName) {
+      return false
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: trimmedName })
+      .eq('id', userId)
+
+    if (error) {
+      console.error('Profile name update error:', error.message)
+      return false
+    }
+
+    setUserName(trimmedName)
+    return true
+  }
+
   const favoriteGames = games.filter((game) => favoriteIds.includes(game.id))
 
   return (
@@ -310,6 +341,8 @@ function App() {
       <CssBaseline />
       <AppLayout
         userRole={userRole}
+        userName={userName}
+        avatarUrl={avatarUrl}
         onHomeClick={() => openPage('home')}
         onAdminClick={() => openPage('admin')}
         onAboutClick={() => openPage('about')}
@@ -333,9 +366,11 @@ function App() {
             userName={userName}
             avatarUrl={avatarUrl}
             favoriteGames={favoriteGames}
+            isFavoritesLoading={isFavoritesLoading}
             onOpenGame={openGamePage}
             onToggleFavorite={toggleFavorite}
             onAvatarUpdate={updateProfileAvatar}
+            onNameUpdate={updateProfileName}
           />
         )}
         {activePage === 'game' && selectedGame && (

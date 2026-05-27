@@ -43,13 +43,15 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
     [gameList],
   )
 
-  const loadAdminData = useCallback(async () => {
+  const loadAdminData = useCallback(async (showLoading = true) => {
     if (userRole !== 'admin') {
       return
     }
 
-    setIsLoading(true)
-    setMessage('')
+    if (showLoading) {
+      setIsLoading(true)
+      setMessage('')
+    }
 
     const [
       { data: genreData, error: genreError },
@@ -283,9 +285,20 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
 
   const addGenre = async () => {
     const name = newGenreName.trim()
+    const normalizedName = name.toLocaleLowerCase('uk-UA')
 
     if (!name) {
       setMessage('Введи назву жанру.')
+      return
+    }
+
+    if (/\d/.test(name)) {
+      setMessage('Назва жанру не може містити цифри.')
+      return
+    }
+
+    if (genreList.some((genre) => genre.name.trim().toLocaleLowerCase('uk-UA') === normalizedName)) {
+      setMessage('Такий жанр уже є. Два однакових жанри додавати не можна.')
       return
     }
 
@@ -298,7 +311,7 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
 
     setNewGenreName('')
     setMessage('Жанр додано.')
-    await loadAdminData()
+    await loadAdminData(false)
     await onCatalogChange()
   }
 
@@ -323,7 +336,7 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
     }
 
     setMessage('Жанр видалено.')
-    await loadAdminData()
+    await loadAdminData(false)
     await onCatalogChange()
   }
 

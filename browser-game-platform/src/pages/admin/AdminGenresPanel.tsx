@@ -28,9 +28,17 @@ function AdminGenresPanel({
           label="Новий жанр"
           value={newGenreName}
           onChange={(event) => {
-            setNewGenreName(event.target.value)
+            const nextName = event.target.value
+
+            if (/\d/.test(nextName)) {
+              setMessage('Назва жанру не може містити цифри.')
+              return
+            }
+
+            setNewGenreName(nextName)
             setMessage('')
           }}
+          helperText="Використовуй літери, без цифр і повторів."
           fullWidth
         />
         <Button variant="contained" onClick={addGenre} sx={{ minWidth: 160 }}>
