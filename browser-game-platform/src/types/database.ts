@@ -46,10 +46,3 @@ export type RatingRow = {
   value: number
   created_at: string
 }
-
-export type FavoriteRow = {
-  id: number
-  game_id: number
-  user_id: string
-  created_at: string
-}

@@ -26,8 +26,3 @@ export type AdminPageProps = {
   userRole: UserRole
   onCatalogChange: () => void | Promise<void>
 }
-
-export type GameUploadResponse = {
-  play_url?: string
-  error?: string
-}

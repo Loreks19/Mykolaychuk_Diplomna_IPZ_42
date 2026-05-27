@@ -486,7 +486,7 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
               Гра ще не завантажена
             </Typography>
             <Typography color="text.secondary">
-              Після експорту з Construct 2 потрібно додати файли в public/games і прописати шлях у полі playUrl.
+              Після завантаження архіву гри в адмін-панелі тут з'явиться вбудований запуск у браузері.
             </Typography>
           </Box>
         )}

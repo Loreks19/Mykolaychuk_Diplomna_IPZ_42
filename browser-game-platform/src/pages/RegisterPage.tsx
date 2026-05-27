@@ -72,14 +72,8 @@ function RegisterPage({ onRegisterSuccess }: RegisterPageProps) {
     <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ mb: 3 }}>
-          <Typography color="primary.light" sx={{ mb: 1, fontWeight: 700 }}>
-            Account Access
-          </Typography>
           <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
             Реєстрація користувача
-          </Typography>
-          <Typography color="text.secondary">
-            Адміністратор входить окремо через готовий демо-логін. Тут створюється тільки звичайний користувач.
           </Typography>
         </Box>
 

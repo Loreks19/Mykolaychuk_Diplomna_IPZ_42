@@ -1,6 +1,10 @@
 import { supabase } from './supabaseClient'
 import { createSlug } from '../pages/admin/helpers'
-import type { GameUploadResponse } from '../pages/admin/types'
+
+type GameUploadResponse = {
+  play_url?: string
+  error?: string
+}
 
 const gameUploadWorkerUrl = import.meta.env.VITE_GAME_UPLOAD_WORKER_URL as string | undefined
 

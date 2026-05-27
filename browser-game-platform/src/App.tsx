@@ -1,7 +1,7 @@
 import { CssBaseline, ThemeProvider } from '@mui/material'
 import { useEffect, useState } from 'react'
 import AppLayout from './components/AppLayout'
-import { games as fallbackGames, genres as fallbackGenres, type Game, type GameGenre } from './data/games'
+import type { Game, GameGenre } from './data/games'
 import AboutPage from './pages/AboutPage'
 import AdminPage from './pages/AdminPage'
 import GamePage from './pages/GamePage'
@@ -36,19 +36,16 @@ const gameSlugFromHash = (hash: string) => {
 }
 
 function App() {
-  const initialGameSlug = gameSlugFromHash(window.location.hash)
   const [activePage, setActivePage] = useState<AppPage>(() => pageFromHash(window.location.hash))
-  const [selectedGame, setSelectedGame] = useState<Game | null>(() =>
-    initialGameSlug ? fallbackGames.find((game) => game.slug === initialGameSlug) ?? null : null,
-  )
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [userRole, setUserRole] = useState<UserRole>('guest')
   const [userId, setUserId] = useState<string | null>(null)
   const [userName, setUserName] = useState('Гравець')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   const [isFavoritesLoading, setIsFavoritesLoading] = useState(false)
-  const [games, setGames] = useState<Game[]>(fallbackGames)
-  const [genres, setGenres] = useState<GameGenre[]>(fallbackGenres)
+  const [games, setGames] = useState<Game[]>([])
+  const [genres, setGenres] = useState<GameGenre[]>([])
 
   const openPage = (page: AppPage) => {
     setSelectedGame(null)
@@ -340,6 +337,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AppLayout
+        activePage={activePage}
         userRole={userRole}
         userName={userName}
         avatarUrl={avatarUrl}
@@ -359,7 +357,7 @@ function App() {
             onCatalogChange={loadCatalog}
           />
         )}
-        {activePage === 'about' && <AboutPage />}
+        {activePage === 'about' && <AboutPage games={games} />}
         {activePage === 'profile' && (
           <ProfilePage
             userId={userId}

@@ -26,6 +26,7 @@ import type { UserRole } from '../types/database'
 
 type AppLayoutProps = {
   children: ReactNode
+  activePage: string
   userRole: UserRole
   userName: string
   avatarUrl: string | null
@@ -48,6 +49,7 @@ function TwitchIcon() {
 
 function AppLayout({
   children,
+  activePage,
   userRole,
   userName,
   avatarUrl,
@@ -64,12 +66,12 @@ function AppLayout({
   const avatarLetter = userName.trim()[0]?.toUpperCase() ?? 'G'
 
   const menuItems = [
-    { label: 'Ігри', action: onHomeClick, show: true },
-    { label: 'Про нас', action: onAboutClick, show: true },
-    { label: 'Кабінет', action: onProfileClick, show: isLoggedIn },
-    { label: 'Адмін-панель', action: onAdminClick, show: userRole === 'admin' },
-    { label: 'Увійти', action: onLoginClick, show: !isLoggedIn },
-    { label: 'Реєстрація', action: onRegisterClick, show: !isLoggedIn },
+    { label: 'Ігри', action: onHomeClick, page: 'home', show: true },
+    { label: 'Про нас', action: onAboutClick, page: 'about', show: true },
+    { label: 'Кабінет', action: onProfileClick, page: 'profile', show: isLoggedIn },
+    { label: 'Адмін-панель', action: onAdminClick, page: 'admin', show: userRole === 'admin' },
+    { label: 'Увійти', action: onLoginClick, page: 'login', show: !isLoggedIn },
+    { label: 'Реєстрація', action: onRegisterClick, page: 'register', show: !isLoggedIn },
     { label: 'Вийти', action: onLogoutClick, show: isLoggedIn },
   ].filter((item) => item.show)
 
@@ -85,6 +87,35 @@ function AppLayout({
     action()
     setIsMenuOpen(false)
   }
+
+  const isNavActive = (page?: string) => {
+    if (!page) {
+      return false
+    }
+
+    if (page === 'home') {
+      return activePage === 'home' || activePage === 'game'
+    }
+
+    return activePage === page
+  }
+
+  const navButtonSx = (page: string) => {
+    const isActive = isNavActive(page)
+
+    return {
+      px: isActive ? 2 : 1.5,
+      minHeight: 38,
+      color: isActive ? '#F8FBFF' : 'text.secondary',
+      boxShadow: isActive ? undefined : 'none',
+      '&:hover': {
+        color: isActive ? '#F8FBFF' : 'text.primary',
+        bgcolor: isActive ? undefined : 'rgba(103, 179, 250, 0.08)',
+      },
+    }
+  }
+
+  const navButtonVariant = (page: string) => (isNavActive(page) ? 'contained' : 'text')
 
   return (
     <Box
@@ -148,32 +179,24 @@ function AppLayout({
               sx={{
                 display: { xs: 'none', md: 'flex' },
                 gap: 1,
-                '& .MuiButton-root': {
-                  color: 'text.secondary',
-                  px: 1.5,
-                  '&:hover': {
-                    color: 'text.primary',
-                    bgcolor: 'rgba(103, 179, 250, 0.08)',
-                  },
-                },
                 flexWrap: 'wrap',
                 justifyContent: 'flex-end',
                 alignItems: 'center',
               }}
             >
-              <Button color="inherit" onClick={onHomeClick}>
+              <Button variant={navButtonVariant('home')} color="primary" onClick={onHomeClick} sx={navButtonSx('home')}>
                 Ігри
               </Button>
-              <Button color="inherit" onClick={onAboutClick}>
+              <Button variant={navButtonVariant('about')} color="primary" onClick={onAboutClick} sx={navButtonSx('about')}>
                 Про нас
               </Button>
               {isLoggedIn && (
-                <Button color="inherit" onClick={onProfileClick}>
+                <Button variant={navButtonVariant('profile')} color="primary" onClick={onProfileClick} sx={navButtonSx('profile')}>
                   Кабінет
                 </Button>
               )}
               {userRole === 'admin' && (
-                <Button color="inherit" onClick={onAdminClick}>
+                <Button variant={navButtonVariant('admin')} color="primary" onClick={onAdminClick} sx={navButtonSx('admin')}>
                   Адмін-панель
                 </Button>
               )}
@@ -213,7 +236,7 @@ function AppLayout({
                 </>
               ) : (
                 <>
-                  <Button color="inherit" onClick={onLoginClick}>
+                  <Button variant={navButtonVariant('login')} color="primary" onClick={onLoginClick} sx={navButtonSx('login')}>
                     Увійти
                   </Button>
                   <Button variant="contained" onClick={onRegisterClick}>
@@ -260,7 +283,20 @@ function AppLayout({
 
           <List>
             {menuItems.map((item) => (
-              <ListItemButton key={item.label} onClick={() => handleMenuClick(item.action)}>
+              <ListItemButton
+                key={item.label}
+                onClick={() => handleMenuClick(item.action)}
+                sx={{
+                  borderRadius: 1,
+                  color: isNavActive(item.page) ? 'primary.light' : 'text.primary',
+                  bgcolor: isNavActive(item.page) ? 'rgba(15, 105, 222, 0.18)' : 'transparent',
+                  border: '1px solid',
+                  borderColor: isNavActive(item.page) ? 'rgba(103, 179, 250, 0.34)' : 'transparent',
+                  '&:hover': {
+                    bgcolor: isNavActive(item.page) ? 'rgba(15, 105, 222, 0.26)' : 'rgba(103, 179, 250, 0.08)',
+                  },
+                }}
+              >
                 <ListItemText primary={item.label} />
               </ListItemButton>
             ))}

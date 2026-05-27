@@ -63,14 +63,8 @@ function LoginPage({ onLogin }: LoginPageProps) {
     <Container maxWidth="sm" sx={{ py: { xs: 4, md: 6 } }}>
       <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ mb: 3 }}>
-          <Typography color="primary.light" sx={{ mb: 1, fontWeight: 700 }}>
-            Вхід у систему
-          </Typography>
           <Typography component="h1" variant="h1" sx={{ mb: 1 }}>
             Увійти
-          </Typography>
-          <Typography color="text.secondary">
-            Обери тип входу: звичайний користувач не потрапляє в адмінку, а адмін входить тільки через режим адміністратора.
           </Typography>
         </Box>
 
@@ -94,12 +88,6 @@ function LoginPage({ onLogin }: LoginPageProps) {
             Адмін
           </ToggleButton>
         </ToggleButtonGroup>
-
-        {mode === 'admin' && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Для входу в адмінку акаунт має мати роль admin у таблиці profiles.
-          </Alert>
-        )}
 
         <Box component="form" onSubmit={submitLogin}>
           <Stack spacing={2.5}>

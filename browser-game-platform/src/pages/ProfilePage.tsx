@@ -44,10 +44,6 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, isFavoritesLo
   const [ratedGameCount, setRatedGameCount] = useState<number | null>(null)
 
   useEffect(() => {
-    setNextUserName(userName)
-  }, [userName])
-
-  useEffect(() => {
     const loadProfileStats = async () => {
       if (!userId) {
         setCommentCount(null)
@@ -188,7 +184,10 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, isFavoritesLo
             <Button
               variant="outlined"
               startIcon={<EditIcon />}
-              onClick={() => setIsNameDialogOpen(true)}
+              onClick={() => {
+                setNextUserName(userName)
+                setIsNameDialogOpen(true)
+              }}
               fullWidth
             >
               Змінити ім’я

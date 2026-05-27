@@ -189,8 +189,8 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
       return { isValid: false, error: 'Заповни назву, жанр та опис гри.' }
     }
 
-    if (!editingId && !coverFile) {
-      return { isValid: false, error: 'Для нової гри додай заставку з ПК.' }
+    if (!editingId && !coverFile && !form.coverImage.trim()) {
+      return { isValid: false, error: 'Для нової гри додай заставку з ПК або вкажи посилання на зображення.' }
     }
 
     if (Number.isNaN(rating) || rating < 0 || rating > 5) {
@@ -239,7 +239,7 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
       description: form.description.trim(),
       players: form.players.trim() || '1 гравець',
       difficulty: form.difficulty.trim() || 'Легка',
-      cover_image: form.coverImage.trim() || '/games_images/shooter.png',
+      cover_image: form.coverImage.trim(),
       play_url: form.playUrl.trim() || null,
       rating: validation.rating,
     }
@@ -387,9 +387,6 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
       <Box sx={{ mb: 4 }}>
-        <Typography color="primary.light" sx={{ mb: 1, fontWeight: 700 }}>
-          Admin Panel
-        </Typography>
         <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
           Керування платформою
         </Typography>
@@ -411,12 +408,6 @@ function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
           <Tab label="Коментарі" value="comments" />
         </Tabs>
       </Paper>
-
-      {isLoading && (
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Завантаження адмін-даних...
-        </Typography>
-      )}
 
       {activeTab === 'games' && (
         <AdminGamesPanel
