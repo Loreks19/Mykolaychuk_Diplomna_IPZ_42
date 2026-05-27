@@ -356,7 +356,7 @@ export default {
     }
 
     const rootPrefix = indexEntry[0].replace(/index\.html$/i, '')
-    const uploadRoot = `games/${slug}`
+    const uploadRoot = `games/${slug}/${Date.now()}`
     let uploadedCount = 0
 
     for (const [path, bytes] of entries) {
@@ -375,7 +375,9 @@ export default {
       await env.GAME_BUCKET.put(`${uploadRoot}/${relativePath}`, uploadBytes, {
         httpMetadata: {
           contentType: getContentType(relativePath),
-          cacheControl: 'public, max-age=31536000',
+          cacheControl: relativePath.toLowerCase().endsWith('.html')
+            ? 'no-cache, no-store, must-revalidate'
+            : 'public, max-age=31536000, immutable',
         },
       })
 

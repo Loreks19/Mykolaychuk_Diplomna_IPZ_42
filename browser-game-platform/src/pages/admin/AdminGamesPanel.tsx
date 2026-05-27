@@ -1,3 +1,4 @@
+import CloudOffIcon from '@mui/icons-material/CloudOff'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
@@ -34,6 +35,8 @@ type AdminGamesPanelProps = {
   clearForm: () => void
   saveGame: () => void
   deleteGame: (game: EditableGame) => void
+  cleanupGameFiles: (game: EditableGame) => void
+  cleanupGameId: number | null
   setCoverFile: (file: File | null) => void
   setCoverPreviewUrl: (url: string | null) => void
   setGameZipFile: (file: File | null) => void
@@ -56,11 +59,24 @@ function AdminGamesPanel({
   clearForm,
   saveGame,
   deleteGame,
+  cleanupGameFiles,
+  cleanupGameId,
   setCoverFile,
   setCoverPreviewUrl,
   setGameZipFile,
   setMessage,
 }: AdminGamesPanelProps) {
+  const editingGame = gameList.find((game) => game.id === editingId) ?? null
+
+  const handleCleanupCurrentGame = () => {
+    if (!editingGame) {
+      setMessage('Неможливо очистити файли гри, бо для неї ще не було додано ZIP-файлів запуску.')
+      return
+    }
+
+    cleanupGameFiles(editingGame)
+  }
+
   return (
     <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} sx={{ alignItems: 'stretch' }}>
       <Paper
@@ -177,6 +193,18 @@ function AdminGamesPanel({
                 event.target.value = ''
               }}
             />
+          </Button>
+
+          <Button
+            color="warning"
+            variant="outlined"
+            startIcon={<CloudOffIcon />}
+            disabled={Boolean(editingId && cleanupGameId === editingId)}
+            onClick={handleCleanupCurrentGame}
+            fullWidth
+            sx={{ minHeight: 46 }}
+          >
+            {editingId && cleanupGameId === editingId ? 'Очищення...' : 'Очистити файли гри'}
           </Button>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>

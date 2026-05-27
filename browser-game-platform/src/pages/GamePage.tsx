@@ -1,35 +1,17 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import DeleteIcon from '@mui/icons-material/Delete'
-import FavoriteIcon from '@mui/icons-material/Favorite'
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
-import FullscreenIcon from '@mui/icons-material/Fullscreen'
-import FullscreenExitIcon from '@mui/icons-material/FullscreenExit'
-import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import SendIcon from '@mui/icons-material/Send'
-import VolumeOffIcon from '@mui/icons-material/VolumeOff'
-import VolumeUpIcon from '@mui/icons-material/VolumeUp'
-import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium'
 import {
-  Alert,
-  Avatar,
-  Box,
   Button,
-  Chip,
   Container,
-  Divider,
-  IconButton,
-  Paper,
-  Rating,
-  Slider,
   Stack,
-  TextField,
-  Tooltip,
-  Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Game } from '../data/games'
 import { supabase } from '../services/supabaseClient'
 import type { CommentRow, RatingRow, UserRole } from '../types/database'
+import GameCommentsPanel from './game/GameCommentsPanel'
+import GameHero from './game/GameHero'
+import GamePlayer from './game/GamePlayer'
+import GameRatingPanel from './game/GameRatingPanel'
 
 type GamePageProps = {
   game: Game
@@ -219,7 +201,7 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
     const isSaved = await onToggleFavorite(game.id)
 
     if (!isSaved) {
-      setMessage('Не вдалося змінити обране. Перевір, чи є ця гра в таблиці games у Supabase.')
+      setMessage('Не вдалося змінити обране. Перевір, чи є ця гра в каталозі.')
       return
     }
 
@@ -289,316 +271,44 @@ function GamePage({ game, userId, userName, userRole, avatarUrl, isFavorite, onB
         Назад до каталогу
       </Button>
 
-      <Paper sx={{ overflow: 'hidden', mb: 3, border: '1px solid', borderColor: 'divider' }}>
-        <Box
-          sx={{
-            minHeight: 300,
-            p: { xs: 3, md: 4 },
-            display: 'flex',
-            alignItems: 'flex-end',
-            backgroundImage: `linear-gradient(90deg, rgba(11, 16, 32, 0.95), rgba(11, 16, 32, 0.35)), url(${game.coverImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <Box>
-            <Stack direction="row" spacing={1} useFlexGap sx={{ mb: 2, flexWrap: 'wrap' }}>
-              <Chip label={game.genre} color="primary" />
-              <Chip label={game.difficulty} variant="outlined" />
-              <Chip label={game.players} variant="outlined" />
-            </Stack>
+      <GameHero
+        game={game}
+        averageRating={averageRating}
+        ratingCount={ratings.length}
+        isFavorite={isFavorite}
+        onFavoriteClick={handleFavoriteClick}
+      />
 
-            <Typography component="h1" variant="h1" sx={{ mb: 2 }}>
-              {game.title}
-            </Typography>
-
-            <Typography color="text.secondary" sx={{ maxWidth: 720, fontSize: 18, lineHeight: 1.7 }}>
-              {game.description}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ p: 3, alignItems: { md: 'center' } }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flex: 1 }}>
-            <Rating value={averageRating} precision={0.1} readOnly />
-            <Typography color="text.secondary">
-              {averageRating.toFixed(1)} {ratings.length > 0 ? `(${ratings.length})` : ''}
-            </Typography>
-          </Stack>
-
-          <Button
-            variant={isFavorite ? 'contained' : 'outlined'}
-            startIcon={isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-            onClick={handleFavoriteClick}
-          >
-            {isFavorite ? 'В обраному' : 'Додати в обране'}
-          </Button>
-
-          {game.playUrl && (
-            <Button
-              component="a"
-              href={game.playUrl}
-              target="_blank"
-              rel="noreferrer"
-              variant="outlined"
-              endIcon={<OpenInNewIcon />}
-            >
-              Відкрити в новій вкладці
-            </Button>
-          )}
-        </Stack>
-      </Paper>
-
-      <Paper
-        ref={gameShellRef}
-        variant="outlined"
-        sx={{
-          position: 'relative',
-          overflow: 'hidden',
-          mb: 3,
-          bgcolor: '#050815',
-          borderColor: 'rgba(103, 179, 250, 0.28)',
-          boxShadow: '0 24px 80px rgba(15, 105, 222, 0.2)',
-          '&:fullscreen': {
-            width: '100vw',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-          },
-        }}
-      >
-        {game.playUrl ? (
-          <>
-            <Box
-              component="iframe"
-              ref={gameFrameRef}
-              title={game.title}
-              src={game.playUrl}
-              allow="autoplay; fullscreen; gamepad; pointer-lock"
-              allowFullScreen
-              tabIndex={0}
-              onLoad={handleFrameLoad}
-              onMouseEnter={focusGameFrame}
-              onPointerDown={focusGameFrame}
-              sx={{
-                display: 'block',
-                width: '100%',
-                height: { xs: 420, md: 640 },
-                flex: 1,
-                border: 0,
-                pointerEvents: 'auto',
-                userSelect: 'none',
-              }}
-            />
-
-            <Stack
-              direction="row"
-              spacing={1.25}
-              sx={{
-                position: 'absolute',
-                left: { xs: 10, md: 18 },
-                bottom: { xs: 10, md: 18 },
-                zIndex: 2,
-                alignItems: 'center',
-                px: 1,
-                py: 0.75,
-                bgcolor: 'rgba(5, 8, 21, 0.5)',
-                borderRadius: 999,
-                boxShadow: '0 16px 42px rgba(0, 0, 0, 0.45), 0 0 24px rgba(25, 118, 210, 0.22)',
-                backdropFilter: 'blur(14px)',
-              }}
-            >
-              <Tooltip title={isGameMuted ? 'Увімкнути звук' : 'Вимкнути звук'}>
-                <IconButton
-                  size="small"
-                  onClick={toggleGameMute}
-                  aria-label={isGameMuted ? 'Увімкнути звук' : 'Вимкнути звук'}
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    color: '#EAF4FF',
-                    bgcolor: 'rgba(25, 118, 210, 0.72)',
-                    border: '1px solid rgba(103, 179, 250, 0.82)',
-                    '&:hover': {
-                      bgcolor: 'primary.main',
-                    },
-                  }}
-                >
-                  {isGameMuted ? <VolumeOffIcon fontSize="small" /> : <VolumeUpIcon fontSize="small" />}
-                </IconButton>
-              </Tooltip>
-
-              <Slider
-                value={isGameMuted ? 0 : gameVolume}
-                min={0}
-                max={100}
-                onChange={updateGameVolume}
-                aria-label="Гучність гри"
-                sx={{
-                  width: { xs: 96, sm: 132 },
-                  color: 'primary.light',
-                  '& .MuiSlider-rail': { opacity: 0.5 },
-                  '& .MuiSlider-thumb': {
-                    width: 14,
-                    height: 14,
-                    boxShadow: '0 0 0 4px rgba(103, 179, 250, 0.18)',
-                  },
-                }}
-              />
-
-              <Typography variant="caption" sx={{ minWidth: 34, textAlign: 'center', color: '#EAF4FF', fontWeight: 800 }}>
-                {isGameMuted ? 0 : gameVolume}%
-              </Typography>
-            </Stack>
-
-            <Tooltip title={isGameFullscreen ? 'Вийти з повного екрана' : 'На весь екран'}>
-              <IconButton
-                size="small"
-                onClick={toggleGameFullscreen}
-                aria-label={isGameFullscreen ? 'Вийти з повного екрана' : 'На весь екран'}
-                sx={{
-                  position: 'absolute',
-                  right: { xs: 10, md: 18 },
-                  bottom: { xs: 10, md: 18 },
-                  zIndex: 2,
-                  width: 52,
-                  height: 52,
-                  color: '#EAF4FF',
-                  bgcolor: 'rgba(5, 8, 21, 0.5)',
-                  border: '1px solid rgba(103, 179, 250, 0.82)',
-                  '& .MuiSvgIcon-root': {
-                    fontSize: 30,
-                  },
-                  boxShadow: '0 16px 42px rgba(0, 0, 0, 0.45), 0 0 24px rgba(25, 118, 210, 0.22)',
-                  backdropFilter: 'blur(14px)',
-                  '&:hover': {
-                    bgcolor: 'rgba(25, 118, 210, 0.58)',
-                  },
-                }}
-              >
-                {isGameFullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />}
-              </IconButton>
-            </Tooltip>
-          </>
-        ) : (
-          <Box sx={{ p: 5, textAlign: 'center', bgcolor: 'background.paper' }}>
-            <Typography variant="h2" sx={{ mb: 1 }}>
-              Гра ще не завантажена
-            </Typography>
-            <Typography color="text.secondary">
-              Після завантаження архіву гри в адмін-панелі тут з'явиться вбудований запуск у браузері.
-            </Typography>
-          </Box>
-        )}
-      </Paper>
+      <GamePlayer
+        title={game.title}
+        playUrl={game.playUrl}
+        gameShellRef={gameShellRef}
+        gameFrameRef={gameFrameRef}
+        gameVolume={gameVolume}
+        isGameMuted={isGameMuted}
+        isGameFullscreen={isGameFullscreen}
+        onFrameLoad={handleFrameLoad}
+        onFocusFrame={focusGameFrame}
+        onToggleMute={toggleGameMute}
+        onVolumeChange={updateGameVolume}
+        onToggleFullscreen={toggleGameFullscreen}
+      />
 
       <Stack spacing={3}>
-        <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="h2" sx={{ mb: 1 }}>
-            Твоя оцінка
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Поділись враженням від гри: твоя оцінка допоможе іншим швидше знайти найцікавіші проєкти.
-          </Typography>
+        <GameRatingPanel userRating={userRating} onSaveRating={saveRating} />
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
-            <Rating value={userRating} onChange={(_, value) => saveRating(value)} />
-            <Typography color="text.secondary">
-              {userRating ? `Ти оцінив гру на ${userRating}` : 'Ти ще не оцінював цю гру'}
-            </Typography>
-          </Stack>
-        </Paper>
-
-        <Paper sx={{ p: { xs: 3, md: 4 }, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="h2" sx={{ mb: 1 }}>
-            Коментарі
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Розкажи, що сподобалось, поділись порадою або залиш перше враження після проходження.
-          </Typography>
-
-          {message && (
-            <Alert severity="info" sx={{ mb: 3 }} onClose={() => setMessage('')}>
-              {message}
-            </Alert>
-          )}
-
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
-            <TextField
-              fullWidth
-              label="Написати коментар"
-              value={commentText}
-              onChange={(event) => setCommentText(event.target.value)}
-              multiline
-              minRows={2}
-            />
-            <Button variant="contained" endIcon={<SendIcon />} onClick={addComment} sx={{ alignSelf: { md: 'flex-start' } }}>
-              Додати
-            </Button>
-          </Stack>
-
-          {isLoading && (
-            <Typography color="text.secondary" sx={{ mb: 2 }}>
-              Завантаження коментарів...
-            </Typography>
-          )}
-
-          <Stack spacing={2}>
-            {comments.map((comment) => (
-              <Box key={comment.id}>
-                <Stack direction="row" spacing={2}>
-                  <Avatar src={comment.author_avatar_url ?? undefined} sx={{ bgcolor: comment.author_role === 'admin' ? '#D7A721' : 'primary.main' }}>
-                    {comment.author_name[0]}
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between' }}>
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <Typography sx={{ fontWeight: 700 }}>{comment.author_name}</Typography>
-                        {comment.author_role === 'admin' && (
-                          <Chip
-                            icon={<WorkspacePremiumIcon />}
-                            label="Адмін"
-                            size="small"
-                            sx={{
-                              bgcolor: 'rgba(215, 167, 33, 0.18)',
-                              color: '#FFD66B',
-                              border: '1px solid rgba(255, 214, 107, 0.45)',
-                              '& .MuiChip-icon': { color: '#FFD66B' },
-                            }}
-                          />
-                        )}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">
-                        {new Date(comment.created_at).toLocaleDateString('uk-UA')}
-                      </Typography>
-                    </Stack>
-                    <Typography color="text.secondary" sx={{ lineHeight: 1.6, mt: 0.5 }}>
-                      {comment.text}
-                    </Typography>
-                    {(comment.user_id === userId || userRole === 'admin') && (
-                      <Button
-                        color="error"
-                        size="small"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => deleteComment(comment.id)}
-                        sx={{ mt: 1 }}
-                      >
-                        Видалити
-                      </Button>
-                    )}
-                  </Box>
-                </Stack>
-                <Divider sx={{ mt: 2 }} />
-              </Box>
-            ))}
-          </Stack>
-
-          {!isLoading && comments.length === 0 && (
-            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-              Коментарів поки немає. Можеш бути першим.
-            </Typography>
-          )}
-        </Paper>
+        <GameCommentsPanel
+          comments={comments}
+          userId={userId}
+          userRole={userRole}
+          commentText={commentText}
+          message={message}
+          isLoading={isLoading}
+          onCommentTextChange={setCommentText}
+          onCloseMessage={() => setMessage('')}
+          onAddComment={addComment}
+          onDeleteComment={deleteComment}
+        />
       </Stack>
     </Container>
   )
