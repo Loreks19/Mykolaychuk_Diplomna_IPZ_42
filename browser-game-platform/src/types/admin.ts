@@ -1,10 +1,10 @@
-import type { CommentRow, UserRole } from './database'
+import type { CommentRow, GameRow, UserRole } from './database'
 import type { Game } from './game'
 
 export type AdminTab = 'games' | 'genres' | 'comments'
 
 export type EditableGame = Game & {
-  genreId: number | null
+  genreId: GameRow['genre_id']
 }
 
 export type AdminComment = CommentRow & {
