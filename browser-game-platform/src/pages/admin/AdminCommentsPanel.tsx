@@ -14,7 +14,7 @@ function AdminCommentsPanel({ comments, gameTitleById, isLoading, deleteComment 
     <Paper sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
       <Typography variant="h2" sx={{ mb: 1 }}>Модерація коментарів</Typography>
       <Typography color="text.secondary" sx={{ mb: 3 }}>
-        Тут відображаються всі коментарі з усіх ігор. Видалення прибирає коментар із Supabase.
+        Тут відображаються всі коментарі з усіх ігор.
       </Typography>
 
       <Stack spacing={2}>
