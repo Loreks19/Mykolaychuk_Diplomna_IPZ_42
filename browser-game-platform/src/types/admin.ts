@@ -1,5 +1,5 @@
-import type { Game } from '../../data/games'
-import type { CommentRow, UserRole } from '../../types/database'
+import type { CommentRow, UserRole } from './database'
+import type { Game } from './game'
 
 export type AdminTab = 'games' | 'genres' | 'comments'
 

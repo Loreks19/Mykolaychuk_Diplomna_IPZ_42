@@ -2,7 +2,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import CloudQueueIcon from '@mui/icons-material/CloudQueue'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import { Box, Chip, Container, Paper, Stack, Typography } from '@mui/material'
-import type { Game } from '../data/games'
+import type { Game } from '../types/game'
 
 type AboutPageProps = {
   games: Game[]

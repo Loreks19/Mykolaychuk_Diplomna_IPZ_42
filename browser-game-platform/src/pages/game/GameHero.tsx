@@ -10,7 +10,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import type { Game } from '../../data/games'
+import type { Game } from '../../types/game'
 
 type GameHeroProps = {
   game: Game

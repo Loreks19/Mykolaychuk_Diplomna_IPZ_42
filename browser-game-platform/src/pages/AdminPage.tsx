@@ -8,8 +8,8 @@ import AdminGamesPanel from './admin/AdminGamesPanel'
 import AdminGenresPanel from './admin/AdminGenresPanel'
 import AdminPageHeader from './admin/AdminPageHeader'
 import AdminTabsNav from './admin/AdminTabsNav'
-import type { AdminPageProps } from './admin/types'
-import useAdminPage from './admin/useAdminPage'
+import type { AdminPageProps } from '../types/admin'
+import useAdminPage from '../hooks/useAdminPage'
 
 function AdminPage({ userRole, onCatalogChange }: AdminPageProps) {
   const {

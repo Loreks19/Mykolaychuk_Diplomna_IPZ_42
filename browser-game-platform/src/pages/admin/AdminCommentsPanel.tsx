@@ -1,6 +1,6 @@
 import DeleteIcon from '@mui/icons-material/Delete'
 import { Box, Button, Chip, Divider, Paper, Stack, Typography } from '@mui/material'
-import type { AdminComment } from './types'
+import type { AdminComment } from '../../types/admin'
 
 type AdminCommentsPanelProps = {
   comments: AdminComment[]

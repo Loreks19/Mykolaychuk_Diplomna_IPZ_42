@@ -9,7 +9,7 @@ import {
 } from '@mui/material'
 import { useMemo, useState } from 'react'
 import GameCard from '../components/GameCard'
-import type { Game, GameGenre } from '../data/games'
+import type { Game, GameGenre } from '../types/game'
 
 type HomePageProps = {
   games: Game[]

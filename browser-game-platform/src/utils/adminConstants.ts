@@ -1,4 +1,4 @@
-import type { AdminGameForm } from './types'
+import type { AdminGameForm } from '../types/admin'
 
 export const emptyGameForm: AdminGameForm = {
   title: '',

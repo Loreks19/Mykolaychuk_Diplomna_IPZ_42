@@ -17,10 +17,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import GameCard from '../components/GameCard'
-import type { Game } from '../data/games'
+import useProfileStats from '../hooks/useProfileStats'
 import { supabase } from '../services/supabaseClient'
+import type { Game } from '../types/game'
 
 type ProfilePageProps = {
   userId: string | null
@@ -40,40 +41,7 @@ function ProfilePage({ userId, userName, avatarUrl, favoriteGames, isFavoritesLo
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false)
   const [nextUserName, setNextUserName] = useState(userName)
   const [isNameSaving, setIsNameSaving] = useState(false)
-  const [commentCount, setCommentCount] = useState<number | null>(null)
-  const [ratedGameCount, setRatedGameCount] = useState<number | null>(null)
-
-  useEffect(() => {
-    const loadProfileStats = async () => {
-      if (!userId) {
-        setCommentCount(null)
-        setRatedGameCount(null)
-        return
-      }
-
-      setCommentCount(null)
-      setRatedGameCount(null)
-
-      const [
-        { count: nextCommentCount },
-        { count: nextRatedGameCount },
-      ] = await Promise.all([
-        supabase
-          .from('comments')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId),
-        supabase
-          .from('ratings')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', userId),
-      ])
-
-      setCommentCount(nextCommentCount ?? 0)
-      setRatedGameCount(nextRatedGameCount ?? 0)
-    }
-
-    void loadProfileStats()
-  }, [userId])
+  const { commentCount, ratedGameCount } = useProfileStats(userId)
 
   const uploadAvatar = async (file: File) => {
     if (!userId) {

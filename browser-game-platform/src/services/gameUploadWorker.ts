@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient'
-import { createSlug } from '../pages/admin/helpers'
+import { createSlug } from '../utils/adminHelpers'
 
 type GameUploadResponse = {
   play_url?: string

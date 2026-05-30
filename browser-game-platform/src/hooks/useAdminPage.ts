@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { deleteGameArchive, uploadGameArchive } from '../../services/gameUploadWorker'
-import { supabase } from '../../services/supabaseClient'
-import type { CommentRow, GameRow, GenreRow, UserRole } from '../../types/database'
-import { emptyGameForm } from './constants'
-import { createSlug } from './helpers'
-import type { AdminComment, AdminGameForm, AdminTab, EditableGame } from './types'
+import { deleteGameArchive, uploadGameArchive } from '../services/gameUploadWorker'
+import { supabase } from '../services/supabaseClient'
+import type { CommentRow, GameRow, GenreRow, UserRole } from '../types/database'
+import { emptyGameForm } from '../utils/adminConstants'
+import { createSlug } from '../utils/adminHelpers'
+import type { AdminComment, AdminGameForm, AdminTab, EditableGame } from '../types/admin'
 
 type GameFormValidation =
   | { isValid: false; error: string }

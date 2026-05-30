@@ -16,8 +16,8 @@ import {
   Typography,
 } from '@mui/material'
 import type { GenreRow } from '../../types/database'
-import { gameAdminPanelHeight, scrollPanelSx } from './constants'
-import type { AdminGameForm, EditableGame } from './types'
+import { gameAdminPanelHeight, scrollPanelSx } from '../../utils/adminConstants'
+import type { AdminGameForm, EditableGame } from '../../types/admin'
 
 type AdminGamesPanelProps = {
   form: AdminGameForm

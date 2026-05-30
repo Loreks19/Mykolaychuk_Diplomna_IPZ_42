@@ -3,7 +3,7 @@ import {
   Tab,
   Tabs,
 } from '@mui/material'
-import type { AdminTab } from './types'
+import type { AdminTab } from '../../types/admin'
 
 type AdminTabsNavProps = {
   activeTab: AdminTab

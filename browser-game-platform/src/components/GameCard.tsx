@@ -2,7 +2,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import { Box, Button, Card, CardActions, CardContent, Chip, IconButton, Rating, Stack, Typography } from '@mui/material'
-import type { Game } from '../data/games'
+import type { Game } from '../types/game'
 
 type GameCardProps = {
   game: Game
